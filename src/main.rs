@@ -17,18 +17,16 @@ fn main() {
     let app_weak = app.as_weak();
 
     let args: Vec<String> = std::env::args().collect();
-    if args.len() < 2 {
-        eprintln!("Usage: {} <video_file>", args[0]);
-        std::process::exit(1);
-    }
-    let path = &args[1];
+    let path = if args.len() >= 2 { Some(args[1].clone()) } else { None };
 
     let decoder = decoder::Decoder::new();
-    decoder.start(path, 800, 424);
-
     let mut audio_out = audio::AudioOutput::new();
-    audio_out.start(path);
     let _ = audio_out.init_sdl();
+
+    if let Some(p) = path {
+        decoder.start(&p, 800, 424);
+        audio_out.start(&p);
+    }
 
     // Single shared state blob for audio (volume, playing, seek)
     let audio_shared = audio_out.shared.clone();
