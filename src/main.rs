@@ -7,6 +7,7 @@ use std::rc::Rc;
 
 fn main() {
     let app = AppWindow::new().unwrap();
+    let app_weak = app.as_weak();
 
     let decoder = decoder::Decoder::new();
 
@@ -28,7 +29,7 @@ fn main() {
 
     let last_slider_set = Rc::new(RefCell::new(-0.01f64));
     let seek_cooldown = Rc::new(RefCell::new(std::time::Instant::now()));
-    let controls_opacity = Rc::new(RefCell::new(0.0f32));
+    let controls_opacity = Rc::new(RefCell::new(1.0f32));
     let center_opacity = Rc::new(RefCell::new(1.0f32));
     let last_activity = Rc::new(RefCell::new(std::time::Instant::now()));
     let la_play = last_activity.clone();
@@ -46,8 +47,10 @@ fn main() {
         let cmd_seek = cmd.clone();
         let state_seek = state.clone();
         let cd = seek_cooldown.clone();
+        let la = last_activity.clone();
         app.on_seeked(move |val| {
             *cd.borrow_mut() = std::time::Instant::now();
+            *la.borrow_mut() = std::time::Instant::now();
             let st = state_seek.lock().unwrap();
             if st.duration > 0.0 {
                 let target = val as f64 * st.duration;
@@ -60,28 +63,15 @@ fn main() {
         let cmd_rel = cmd.clone();
         let state_rel = state.clone();
         let cd = seek_cooldown.clone();
+        let la = last_activity.clone();
         app.on_seek_relative(move |delta| {
             *cd.borrow_mut() = std::time::Instant::now();
+            *la.borrow_mut() = std::time::Instant::now();
             let st = state_rel.lock().unwrap();
             let new_pos = (st.position + delta as f64).max(0.0).min(st.duration);
             cmd_rel.lock().unwrap().seek_target = Some(new_pos);
         });
     }
-
-    let weak_fs = app.as_weak();
-    app.on_fullscreen_toggled(move || {
-        if let Some(w) = weak_fs.upgrade() {
-            let fs = !w.window().is_fullscreen();
-            w.window().set_fullscreen(fs);
-        }
-    });
-
-    let vol = Rc::new(RefCell::new(0.8f32));
-    let vol_state = vol.clone();
-    app.on_volume_toggled(move || {
-        let mut v = vol_state.borrow_mut();
-        *v = if *v > 0.0 { 0.0 } else { 0.8 };
-    });
 
     {
         let la = last_activity.clone();
@@ -90,7 +80,60 @@ fn main() {
         });
     }
 
-    let app_weak = app.as_weak();
+    {
+        let weak = app_weak.clone();
+        let la = last_activity.clone();
+        app.on_fullscreen_toggled(move || {
+            *la.borrow_mut() = std::time::Instant::now();
+            if let Some(w) = weak.upgrade() {
+                let fs = !w.window().is_fullscreen();
+                w.window().set_fullscreen(fs);
+                w.set_is_fullscreen(fs);
+            }
+        });
+    }
+
+    {
+        let weak = app_weak.clone();
+        let la = last_activity.clone();
+        app.on_maximize_window(move || {
+            *la.borrow_mut() = std::time::Instant::now();
+            if let Some(w) = weak.upgrade() {
+                let fs = !w.window().is_fullscreen();
+                w.window().set_fullscreen(fs);
+                w.set_is_fullscreen(fs);
+            }
+        });
+    }
+
+    {
+        let weak = app_weak.clone();
+        app.on_minimize_window(move || {
+            if let Some(w) = weak.upgrade() {
+                let _ = w.window().hide();
+            }
+        });
+    }
+
+    {
+        let la = last_activity.clone();
+        app.on_close_window(move || {
+            *la.borrow_mut() = std::time::Instant::now();
+            std::process::exit(0);
+        });
+    }
+
+    let vol = Rc::new(RefCell::new(0.8f32));
+    {
+        let vol_state = vol.clone();
+        let la = last_activity.clone();
+        app.on_volume_toggled(move || {
+            *la.borrow_mut() = std::time::Instant::now();
+            let mut v = vol_state.borrow_mut();
+            *v = if *v > 0.0 { 0.0 } else { 0.8 };
+        });
+    }
+
     let timer = slint::Timer::default();
     timer.start(
         slint::TimerMode::Repeated,
@@ -140,17 +183,17 @@ fn main() {
             }
 
             let idle = last_activity.borrow().elapsed().as_secs_f32();
-            let controls_target = if playing && idle > 2.0 { 0.0 } else { 1.0 };
-            let center_target = if playing { 0.0 } else { 1.0 };
+            let controls_target = if playing && idle > 3.0 { 0.25 } else { 1.0 };
+            let center_target = if playing && idle > 3.0 { 0.0 } else if playing { 0.0 } else { 1.0 };
 
             let cur_ctrl = *controls_opacity.borrow();
-            let new_ctrl = cur_ctrl + (controls_target - cur_ctrl) * 0.08;
+            let new_ctrl = cur_ctrl + (controls_target - cur_ctrl) * 0.06;
             let new_ctrl = new_ctrl.clamp(0.0, 1.0);
             a.set_controls_opacity(new_ctrl);
             *controls_opacity.borrow_mut() = new_ctrl;
 
             let cur_center = *center_opacity.borrow();
-            let new_center = cur_center + (center_target - cur_center) * 0.06;
+            let new_center = cur_center + (center_target - cur_center) * 0.05;
             let new_center = new_center.clamp(0.0, 1.0);
             a.set_center_btn_opacity(new_center);
             *center_opacity.borrow_mut() = new_center;

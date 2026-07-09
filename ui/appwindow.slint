@@ -6,6 +6,7 @@ export component AppWindow inherits Window {
     preferred-height: 520px;
     background: #0a0a12;
 
+
     in-out property <image> frame;
     in-out property <float> position;
     in-out property <float> duration;
@@ -16,6 +17,8 @@ export component AppWindow inherits Window {
     in-out property <float> controls-opacity: 1;
     in-out property <float> center-btn-opacity: 1;
     in-out property <float> volume-level: 0.8;
+    in-out property <bool> is-fullscreen;
+    in-out property <bool> is-maximized;
 
     callback play-paused();
     callback seeked(float);
@@ -23,6 +26,9 @@ export component AppWindow inherits Window {
     callback seek-relative(float);
     callback controls-moved();
     callback volume-toggled();
+    callback close-window();
+    callback maximize-window();
+    callback minimize-window();
 
     VerticalBox {
         padding: 0px;
@@ -36,6 +42,7 @@ export component AppWindow inherits Window {
                 key-pressed(event) => {
                     if event.text == " " { root.play-paused(); return accept; }
                     if event.text == "f" || event.text == "F" { root.fullscreen-toggled(); return accept; }
+                    if event.text == "Escape" { root.close-window(); return accept; }
                     if event.text == "j" { root.seek-relative(-10); return accept; }
                     if event.text == "l" { root.seek-relative(10); return accept; }
                     if event.text == "," { root.seek-relative(-5); return accept; }
@@ -58,7 +65,7 @@ export component AppWindow inherits Window {
                 Rectangle {
                     x: 0px; y: 0px;
                     width: 100%; height: 100%;
-                    opacity: 0.3;
+                    opacity: 0.2;
                     background: #000;
                 }
 
@@ -93,6 +100,7 @@ export component AppWindow inherits Window {
                             }
 
                             TouchArea {
+                                moved => { root.controls-moved(); }
                                 clicked => { root.play-paused(); }
                             }
                         }
@@ -130,6 +138,7 @@ export component AppWindow inherits Window {
                                 }
 
                                 TouchArea {
+                                    moved => { root.controls-moved(); }
                                     clicked => { root.play-paused(); }
                                 }
                             }
@@ -148,6 +157,7 @@ export component AppWindow inherits Window {
                                 maximum: 1;
                                 value: root.slider-value;
                                 changed(new-val) => {
+                                    root.controls-moved();
                                     if !root.block-slider-update {
                                         root.seeked(new-val);
                                     }
@@ -166,6 +176,7 @@ export component AppWindow inherits Window {
                                 }
 
                                 TouchArea {
+                                    moved => { root.controls-moved(); }
                                     clicked => { root.volume-toggled(); }
                                 }
                             }
@@ -175,7 +186,7 @@ export component AppWindow inherits Window {
                                 background: rgba(255, 255, 255, 0.06);
 
                                 Text {
-                                    text: "⛶";
+                                    text: root.is-fullscreen ? "⧉" : "⛶";
                                     color: #ccc;
                                     font-size: 15px;
                                     x: (parent.width - self.preferred-width) / 2;
@@ -183,7 +194,26 @@ export component AppWindow inherits Window {
                                 }
 
                                 TouchArea {
+                                    moved => { root.controls-moved(); }
                                     clicked => { root.fullscreen-toggled(); }
+                                }
+                            }
+
+                            Rectangle {
+                                width: 36px; height: 36px;
+                                background: rgba(255, 255, 255, 0.06);
+
+                                Text {
+                                    text: "✕";
+                                    color: #e55;
+                                    font-size: 15px;
+                                    x: (parent.width - self.preferred-width) / 2;
+                                    y: (parent.height - self.preferred-height) / 2;
+                                }
+
+                                TouchArea {
+                                    moved => { root.controls-moved(); }
+                                    clicked => { root.close-window(); }
                                 }
                             }
                         }
