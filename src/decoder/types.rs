@@ -7,11 +7,12 @@ pub struct DecoderCommand {
     pub playing: bool,
     pub quit: bool,
     pub speed: f32,
+    pub load_file: Option<String>,
 }
 
 impl Default for DecoderCommand {
     fn default() -> Self {
-        Self { seek_target: None, playing: true, quit: false, speed: 1.0 }
+        Self { seek_target: None, playing: true, quit: false, speed: 1.0, load_file: None }
     }
 }
 

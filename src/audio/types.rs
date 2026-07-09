@@ -8,6 +8,7 @@ pub struct AudioShared {
     /// When Some(t), the decode loop should seek to `t` seconds.
     pub seek_to:  Option<f64>,
     pub quit:     bool,
+    pub load_file: Option<String>,
 }
 
 impl AudioShared {
@@ -18,6 +19,7 @@ impl AudioShared {
             playing: true,
             seek_to: None,
             quit:    false,
+            load_file: None,
         }
     }
 }

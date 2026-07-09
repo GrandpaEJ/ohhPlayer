@@ -1,5 +1,10 @@
+export struct RecentFile {
+    path: string,
+    name: string,
+}
+
 export component RecentFilesOverlay inherits Rectangle {
-    in property <[string]> files;
+    in property <[RecentFile]> files;
     in property <bool> is-open;
     callback close-clicked;
     callback file-clicked(string);
@@ -66,7 +71,7 @@ export component RecentFilesOverlay inherits Rectangle {
                         animate background { duration: 100ms; }
                         
                         Text {
-                            text: file;
+                            text: file.name;
                             color: #ddd;
                             font-size: 13px;
                             vertical-alignment: center;
@@ -76,7 +81,7 @@ export component RecentFilesOverlay inherits Rectangle {
 
                         ta := TouchArea {
                             clicked => {
-                                root.file-clicked(file);
+                                root.file-clicked(file.path);
                                 root.close-clicked();
                             }
                         }

@@ -14,18 +14,42 @@ pub(crate) fn decode_video(
 ) {
     use ffmpeg_sys_next::*;
     unsafe {
-        let path_c = CString::new(path).unwrap();
-        let mut fmt_ctx: *mut AVFormatContext = ptr::null_mut();
+        let mut current_path = path.to_owned();
+        loop {
+            let path_c = CString::new(current_path.clone()).unwrap();
+            let mut fmt_ctx: *mut AVFormatContext = ptr::null_mut();
 
-        if avformat_open_input(&mut fmt_ctx, path_c.as_ptr(), ptr::null_mut(), ptr::null_mut()) < 0 {
-            eprintln!("decoder: cannot open '{}'", path);
-            return;
-        }
-        if avformat_find_stream_info(fmt_ctx, ptr::null_mut()) < 0 {
-            eprintln!("decoder: cannot find stream info");
-            avformat_close_input(&mut fmt_ctx);
-            return;
-        }
+            if avformat_open_input(&mut fmt_ctx, path_c.as_ptr(), ptr::null_mut(), ptr::null_mut()) < 0 {
+                eprintln!("decoder: cannot open '{}'", current_path);
+                // Wait for a new file command
+                loop {
+                    let mut c = command.lock().unwrap();
+                    if c.quit { return; }
+                    if let Some(new_file) = c.load_file.take() {
+                        current_path = new_file;
+                        break;
+                    }
+                    drop(c);
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+                continue;
+            }
+            if avformat_find_stream_info(fmt_ctx, ptr::null_mut()) < 0 {
+                eprintln!("decoder: cannot find stream info");
+                avformat_close_input(&mut fmt_ctx);
+                // Wait for a new file command
+                loop {
+                    let mut c = command.lock().unwrap();
+                    if c.quit { return; }
+                    if let Some(new_file) = c.load_file.take() {
+                        current_path = new_file;
+                        break;
+                    }
+                    drop(c);
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+                continue;
+            }
 
         let nb      = (*fmt_ctx).nb_streams as usize;
         let streams = std::slice::from_raw_parts((*fmt_ctx).streams, nb);
@@ -39,7 +63,17 @@ pub(crate) fn decode_video(
         if video_idx < 0 {
             eprintln!("decoder: no video stream");
             avformat_close_input(&mut fmt_ctx);
-            return;
+            loop {
+                let mut c = command.lock().unwrap();
+                if c.quit { return; }
+                if let Some(new_file) = c.load_file.take() {
+                    current_path = new_file;
+                    break;
+                }
+                drop(c);
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            continue;
         }
 
         let vs  = *streams[video_idx as usize];
@@ -55,21 +89,42 @@ pub(crate) fn decode_video(
         if codec.is_null() {
             eprintln!("decoder: codec not found");
             avformat_close_input(&mut fmt_ctx);
-            return;
+            loop {
+                let mut c = command.lock().unwrap();
+                if c.quit { return; }
+                if let Some(new_file) = c.load_file.take() { current_path = new_file; break; }
+                drop(c);
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            continue;
         }
 
         let mut codec_ctx = avcodec_alloc_context3(codec);
         if codec_ctx.is_null() {
             eprintln!("decoder: cannot alloc codec context");
             avformat_close_input(&mut fmt_ctx);
-            return;
+            loop {
+                let mut c = command.lock().unwrap();
+                if c.quit { return; }
+                if let Some(new_file) = c.load_file.take() { current_path = new_file; break; }
+                drop(c);
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            continue;
         }
         avcodec_parameters_to_context(codec_ctx, vs.codecpar);
         if avcodec_open2(codec_ctx, codec, ptr::null_mut()) < 0 {
             eprintln!("decoder: cannot open codec");
             avcodec_free_context(&mut codec_ctx);
             avformat_close_input(&mut fmt_ctx);
-            return;
+            loop {
+                let mut c = command.lock().unwrap();
+                if c.quit { return; }
+                if let Some(new_file) = c.load_file.take() { current_path = new_file; break; }
+                drop(c);
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            continue;
         }
 
         let native_w = (*codec_ctx).width as u32;
@@ -91,7 +146,14 @@ pub(crate) fn decode_video(
             eprintln!("decoder: cannot create scaler");
             avcodec_free_context(&mut codec_ctx);
             avformat_close_input(&mut fmt_ctx);
-            return;
+            loop {
+                let mut c = command.lock().unwrap();
+                if c.quit { return; }
+                if let Some(new_file) = c.load_file.take() { current_path = new_file; break; }
+                drop(c);
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            continue;
         }
 
         // Intermediate rgb_buf and rgb_frame removed. 
@@ -116,6 +178,11 @@ pub(crate) fn decode_video(
             {
                 let mut c = command.lock().unwrap();
                 if c.quit { break; }
+
+                if let Some(new_file) = c.load_file.take() {
+                    current_path = new_file;
+                    break; // breaks inner packet loop, proceeds to cleanup, then restarts outer loop
+                }
 
                 // Bug #6 fix: seek is checked every iteration, not only for video pkts
                 if let Some(target) = c.seek_target.take() {
@@ -240,5 +307,10 @@ pub(crate) fn decode_video(
         sws_freeContext(sws_ctx);
         avcodec_free_context(&mut codec_ctx);
         avformat_close_input(&mut fmt_ctx);
+        
+        if command.lock().unwrap().quit {
+            break; // Exit the outer loop and thread
+        }
+        } // end of outer loop
     }
 }

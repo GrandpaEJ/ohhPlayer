@@ -8,18 +8,34 @@ use super::AudioShared;
 pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
     use ffmpeg_sys_next::*;
     unsafe {
-        let path_c      = CString::new(path).unwrap();
-        let mut fmt_ctx: *mut AVFormatContext = ptr::null_mut();
+        let mut current_path = path.to_owned();
+        loop {
+            let path_c = CString::new(current_path.clone()).unwrap();
+            let mut fmt_ctx: *mut AVFormatContext = ptr::null_mut();
 
-        if avformat_open_input(&mut fmt_ctx, path_c.as_ptr(), ptr::null_mut(), ptr::null_mut()) < 0 {
-            eprintln!("audio: cannot open '{}'", path);
-            return;
-        }
-        if avformat_find_stream_info(fmt_ctx, ptr::null_mut()) < 0 {
-            eprintln!("audio: cannot find stream info");
-            avformat_close_input(&mut fmt_ctx);
-            return;
-        }
+            if avformat_open_input(&mut fmt_ctx, path_c.as_ptr(), ptr::null_mut(), ptr::null_mut()) < 0 {
+                eprintln!("audio: cannot open '{}'", current_path);
+                loop {
+                    let mut s = shared.lock().unwrap();
+                    if s.quit { return; }
+                    if let Some(new_file) = s.load_file.take() { current_path = new_file; break; }
+                    drop(s);
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+                continue;
+            }
+            if avformat_find_stream_info(fmt_ctx, ptr::null_mut()) < 0 {
+                eprintln!("audio: cannot find stream info");
+                avformat_close_input(&mut fmt_ctx);
+                loop {
+                    let mut s = shared.lock().unwrap();
+                    if s.quit { return; }
+                    if let Some(new_file) = s.load_file.take() { current_path = new_file; break; }
+                    drop(s);
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+                continue;
+            }
 
         let nb      = (*fmt_ctx).nb_streams as usize;
         let streams = std::slice::from_raw_parts((*fmt_ctx).streams, nb);
@@ -32,7 +48,14 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
         }
         if audio_idx < 0 {
             avformat_close_input(&mut fmt_ctx);
-            return;
+            loop {
+                let mut s = shared.lock().unwrap();
+                if s.quit { return; }
+                if let Some(new_file) = s.load_file.take() { current_path = new_file; break; }
+                drop(s);
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            continue;
         }
 
         let as_       = *streams[audio_idx as usize];
@@ -40,19 +63,40 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
         let codec     = avcodec_find_decoder((*as_.codecpar).codec_id);
         if codec.is_null() {
             avformat_close_input(&mut fmt_ctx);
-            return;
+            loop {
+                let mut s = shared.lock().unwrap();
+                if s.quit { return; }
+                if let Some(new_file) = s.load_file.take() { current_path = new_file; break; }
+                drop(s);
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            continue;
         }
 
         let mut codec_ctx = avcodec_alloc_context3(codec);
         if codec_ctx.is_null() {
             avformat_close_input(&mut fmt_ctx);
-            return;
+            loop {
+                let mut s = shared.lock().unwrap();
+                if s.quit { return; }
+                if let Some(new_file) = s.load_file.take() { current_path = new_file; break; }
+                drop(s);
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            continue;
         }
         avcodec_parameters_to_context(codec_ctx, as_.codecpar);
         if avcodec_open2(codec_ctx, codec, ptr::null_mut()) < 0 {
             avcodec_free_context(&mut codec_ctx);
             avformat_close_input(&mut fmt_ctx);
-            return;
+            loop {
+                let mut s = shared.lock().unwrap();
+                if s.quit { return; }
+                if let Some(new_file) = s.load_file.take() { current_path = new_file; break; }
+                drop(s);
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            continue;
         }
 
         let src_rate = (*codec_ctx).sample_rate;
@@ -79,7 +123,14 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
             eprintln!("audio: cannot create resampler");
             avcodec_free_context(&mut codec_ctx);
             avformat_close_input(&mut fmt_ctx);
-            return;
+            loop {
+                let mut s = shared.lock().unwrap();
+                if s.quit { return; }
+                if let Some(new_file) = s.load_file.take() { current_path = new_file; break; }
+                drop(s);
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            continue;
         }
         swr_init(swr);
 
@@ -94,6 +145,12 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
                 let mut s = shared.lock().unwrap();
 
                 if s.quit { break; }
+
+                if let Some(new_file) = s.load_file.take() {
+                    current_path = new_file;
+                    s.buffer.clear();
+                    break;
+                }
 
                 if let Some(target) = s.seek_to.take() {
                     // Flush decode pipeline
@@ -191,5 +248,10 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
         av_packet_free(&mut pkt);
         avcodec_free_context(&mut codec_ctx);
         avformat_close_input(&mut fmt_ctx);
+
+        if shared.lock().unwrap().quit {
+            break;
+        }
+        } // end of outer loop
     }
 }

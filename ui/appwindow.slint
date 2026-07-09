@@ -4,7 +4,7 @@ import { CenterPlayButton } from "./center-button.slint";
 import { WindowKeyboard } from "./window-keyboard.slint";
 import { VideoLayer } from "./video-layer.slint";
 import { TopMenu } from "./top-menu.slint";
-import { RecentFilesOverlay } from "./recent-files.slint";
+import { RecentFilesOverlay, RecentFile } from "./recent-files.slint";
 
 export component AppWindow inherits Window {
     title: "ohhPlayer";
@@ -28,7 +28,7 @@ export component AppWindow inherits Window {
     in-out property <float>  speed: 1.0;
     in property <string>     debug-text;
     in-out property <int>    scale-mode: 1;
-    in property <[string]>   recent-files;
+    in property <[RecentFile]> recent-files;
     in-out property <bool>   recent-menu-open: false;
 
     forward-focus: my_kb;

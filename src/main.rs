@@ -16,7 +16,7 @@ fn get_history_path() -> std::path::PathBuf {
     std::path::PathBuf::from(home).join(".ohhplayer_history")
 }
 
-fn load_history() -> Vec<String> {
+pub fn load_history() -> Vec<String> {
     if let Ok(content) = std::fs::read_to_string(get_history_path()) {
         content.lines().filter(|s| !s.is_empty()).map(|s| s.to_string()).collect()
     } else {
@@ -24,12 +24,29 @@ fn load_history() -> Vec<String> {
     }
 }
 
-fn save_to_history(path: &str) {
+pub fn save_to_history(path: &str) {
     let mut history = load_history();
     history.retain(|p| p != path);
     history.insert(0, path.to_string());
-    history.truncate(15); // keep last 15
+    history.truncate(15);
     let _ = std::fs::write(get_history_path(), history.join("\n"));
+}
+
+pub fn get_history_model() -> slint::ModelRc<RecentFile> {
+    let history = load_history();
+    let mut models = Vec::new();
+    for p in history {
+        let name = std::path::Path::new(&p)
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+        models.push(RecentFile {
+            path: slint::SharedString::from(p),
+            name: slint::SharedString::from(name),
+        });
+    }
+    slint::ModelRc::new(slint::VecModel::from(models))
 }
 
 fn main() {
@@ -50,8 +67,7 @@ fn main() {
         audio_out.start(&p);
     }
 
-    let history: Vec<slint::SharedString> = load_history().into_iter().map(slint::SharedString::from).collect();
-    app.set_recent_files(slint::ModelRc::new(slint::VecModel::from(history)));
+    app.set_recent_files(get_history_model());
 
     // Single shared state blob for audio (volume, playing, seek)
     let audio_shared = audio_out.shared.clone();

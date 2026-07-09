@@ -125,22 +125,35 @@ pub fn setup_callbacks(
 
     // ── Open File & Recent ───────────────────────────────────────────────
     {
+        let cmd_o = cmd.clone();
+        let audio_o = audio_shared.clone();
+        let weak = app_weak.clone();
         app.on_open_file(move || {
             if let Some(path) = rfd::FileDialog::new()
                 .add_filter("Video", &["mp4", "mkv", "avi", "webm", "mov"])
                 .pick_file() 
             {
-                if let Ok(exe) = std::env::current_exe() {
-                    let _ = std::process::Command::new(exe).arg(path).spawn();
-                    std::process::exit(0);
+                let p = path.to_string_lossy().to_string();
+                crate::save_to_history(&p);
+                if let Some(a) = weak.upgrade() {
+                    a.set_recent_files(crate::get_history_model());
                 }
+                cmd_o.lock().unwrap().load_file = Some(p.clone());
+                audio_o.lock().unwrap().load_file = Some(p);
             }
         });
+
+        let cmd_r = cmd.clone();
+        let audio_r = audio_shared.clone();
+        let weak2 = app_weak.clone();
         app.on_open_recent_file(move |path| {
-            if let Ok(exe) = std::env::current_exe() {
-                let _ = std::process::Command::new(exe).arg(path.as_str()).spawn();
-                std::process::exit(0);
+            let p = path.as_str().to_string();
+            crate::save_to_history(&p);
+            if let Some(a) = weak2.upgrade() {
+                a.set_recent_files(crate::get_history_model());
             }
+            cmd_r.lock().unwrap().load_file = Some(p.clone());
+            audio_r.lock().unwrap().load_file = Some(p);
         });
     }
 
