@@ -4,6 +4,7 @@ import { CenterPlayButton } from "./center-button.slint";
 import { WindowKeyboard } from "./window-keyboard.slint";
 import { VideoLayer } from "./video-layer.slint";
 import { TopMenu } from "./top-menu.slint";
+import { RecentFilesOverlay } from "./recent-files.slint";
 
 export component AppWindow inherits Window {
     title: "ohhPlayer";
@@ -27,6 +28,8 @@ export component AppWindow inherits Window {
     in-out property <float>  speed: 1.0;
     in property <string>     debug-text;
     in-out property <int>    scale-mode: 1;
+    in property <[string]>   recent-files;
+    in-out property <bool>   recent-menu-open: false;
 
     forward-focus: my_kb;
 
@@ -43,6 +46,7 @@ export component AppWindow inherits Window {
     callback close-window();
     callback open-file();
     callback open-recent();
+    callback open-recent-file(string);
 
     VerticalBox {
         padding: 0px;
@@ -167,7 +171,7 @@ export component AppWindow inherits Window {
                     scale-mode <=> root.scale-mode;
                     controls-opacity: root.controls-opacity;
                     open-file => { root.open-file(); }
-                    open-recent => { root.open-recent(); }
+                    open-recent => { root.recent-menu-open = true; }
                     controls-moved => { root.controls-moved(); }
                 }
 
@@ -189,6 +193,15 @@ export component AppWindow inherits Window {
                         x: (parent.width - self.preferred-width) / 2;
                         y: (parent.height - self.preferred-height) / 2;
                     }
+                }
+
+                // ── Recent Files Overlay ─────────────────────────────────────
+                RecentFilesOverlay {
+                    x: 0; y: 0; width: 100%; height: 100%;
+                    files: root.recent-files;
+                    is-open: root.recent-menu-open;
+                    close-clicked => { root.recent-menu-open = false; }
+                    file-clicked(path) => { root.open-recent-file(path); }
                 }
 
             }

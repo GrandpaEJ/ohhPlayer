@@ -136,8 +136,11 @@ pub fn setup_callbacks(
                 }
             }
         });
-        app.on_open_recent(move || {
-            println!("Recent files feature coming soon!");
+        app.on_open_recent_file(move |path| {
+            if let Ok(exe) = std::env::current_exe() {
+                let _ = std::process::Command::new(exe).arg(path.as_str()).spawn();
+                std::process::exit(0);
+            }
         });
     }
 

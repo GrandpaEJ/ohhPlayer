@@ -1,0 +1,96 @@
+export component RecentFilesOverlay inherits Rectangle {
+    in property <[string]> files;
+    in property <bool> is-open;
+    callback close-clicked;
+    callback file-clicked(string);
+
+    opacity: is-open ? 1.0 : 0.0;
+    visible: self.opacity > 0;
+    animate opacity { duration: 200ms; }
+
+    Rectangle {
+        background: rgba(0, 0, 0, 0.7);
+        TouchArea {
+            clicked => { root.close-clicked(); }
+        }
+    }
+
+    Rectangle {
+        width: min(600px, parent.width * 0.9);
+        height: min(400px, parent.height * 0.9);
+        background: #101018;
+        border-radius: 8px;
+        border-width: 1px;
+        border-color: rgba(255, 255, 255, 0.1);
+        drop-shadow-blur: 16px;
+        drop-shadow-color: rgba(0, 0, 0, 0.8);
+
+        VerticalLayout {
+            padding: 16px;
+            spacing: 12px;
+
+            HorizontalLayout {
+                Text {
+                    text: "Recent Files";
+                    color: #fff;
+                    font-size: 18px;
+                    font-weight: 700;
+                    horizontal-alignment: left;
+                }
+                Rectangle {
+                    width: 24px;
+                    TouchArea {
+                        clicked => { root.close-clicked(); }
+                    }
+                    Text {
+                        text: "✕";
+                        color: #aaa;
+                        font-size: 16px;
+                        horizontal-alignment: right;
+                    }
+                }
+            }
+
+            Rectangle {
+                height: 1px;
+                background: rgba(255, 255, 255, 0.1);
+            }
+
+            Flickable {
+                VerticalLayout {
+                    spacing: 4px;
+                    for file in root.files: Rectangle {
+                        height: 36px;
+                        border-radius: 4px;
+                        background: ta.has_hover ? rgba(255, 255, 255, 0.1) : transparent;
+                        animate background { duration: 100ms; }
+                        
+                        Text {
+                            text: file;
+                            color: #ddd;
+                            font-size: 13px;
+                            vertical-alignment: center;
+                            x: 8px;
+                            overflow: elide;
+                        }
+
+                        ta := TouchArea {
+                            clicked => {
+                                root.file-clicked(file);
+                                root.close-clicked();
+                            }
+                        }
+                    }
+                }
+            }
+
+            if root.files.length == 0: Text {
+                text: "No recent files found.";
+                color: #888;
+                font-size: 14px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+}
