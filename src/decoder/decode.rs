@@ -94,18 +94,8 @@ pub(crate) fn decode_video(
             return;
         }
 
-        let rgb_size = av_image_get_buffer_size(AVPixelFormat::AV_PIX_FMT_RGB24, native_w as i32, native_h as i32, 1);
-        let rgb_buf  = av_malloc(rgb_size as usize) as *mut u8;
-        let mut rgb_frame = av_frame_alloc();
-        av_image_fill_arrays(
-            (*rgb_frame).data.as_mut_ptr(),
-            (*rgb_frame).linesize.as_mut_ptr(),
-            rgb_buf,
-            AVPixelFormat::AV_PIX_FMT_RGB24,
-            native_w as i32,
-            native_h as i32,
-            1,
-        );
+        // Intermediate rgb_buf and rgb_frame removed. 
+        // We will scale directly into Slint's SharedPixelBuffer inside the loop.
 
         let mut pkt      = av_packet_alloc();
         let mut frame    = av_frame_alloc();
@@ -220,29 +210,25 @@ pub(crate) fn decode_video(
                     }
                 }
 
-                // ── Scale frame to RGB ────────────────────────────────────
+                // ── Scale frame to RGB directly into Slint's buffer ───────
+                let mut buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::new(native_w, native_h);
+                let slice = buffer.make_mut_slice();
+                
+                let dst_data: [*mut u8; 4] = [slice.as_mut_ptr() as *mut u8, ptr::null_mut(), ptr::null_mut(), ptr::null_mut()];
+                let dst_linesize: [i32; 4] = [native_w as i32 * 3, 0, 0, 0];
+
                 sws_scale(
                     sws_ctx,
                     (*frame).data.as_ptr() as *const *const u8,
                     (*frame).linesize.as_ptr(),
                     0,
                     (*codec_ctx).height,
-                    (*rgb_frame).data.as_mut_ptr(),
-                    (*rgb_frame).linesize.as_mut_ptr(),
+                    dst_data.as_ptr(),
+                    dst_linesize.as_ptr(),
                 );
 
-                let row_bytes = native_w as usize * 3;
-                let mut buf   = vec![0u8; (native_h as usize) * row_bytes];
-                for y in 0..native_h as usize {
-                    let src = (*rgb_frame).data[0].offset((y * (*rgb_frame).linesize[0] as usize) as isize);
-                    let dst = &mut buf[y * row_bytes..(y + 1) * row_bytes];
-                    dst.copy_from_slice(std::slice::from_raw_parts(src, row_bytes));
-                }
-
                 *frame_out.lock().unwrap() = Some(DecodedFrame {
-                    data:   buf,
-                    width:  native_w,
-                    height: native_h,
+                    buffer,
                 });
 
                 av_frame_unref(frame);
@@ -250,8 +236,6 @@ pub(crate) fn decode_video(
         }
 
         av_frame_free(&mut frame);
-        av_frame_free(&mut rgb_frame);
-        av_free(rgb_buf as *mut libc::c_void);
         av_packet_free(&mut pkt);
         sws_freeContext(sws_ctx);
         avcodec_free_context(&mut codec_ctx);

@@ -190,14 +190,7 @@ pub fn setup_callbacks(
             };
 
             if let Some(f) = frame.lock().unwrap().take() {
-                let img = slint::Image::from_rgb8(
-                    slint::SharedPixelBuffer::<slint::Rgb8Pixel>::clone_from_slice(
-                        &f.data,
-                        f.width,
-                        f.height,
-                    ),
-                );
-                a.set_frame(img);
+                a.set_frame(slint::Image::from_rgb8(f.buffer));
             }
 
             let (pos, dur, playing) = {

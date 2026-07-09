@@ -1,7 +1,5 @@
 pub struct DecodedFrame {
-    pub data: Vec<u8>,
-    pub width: u32,
-    pub height: u32,
+    pub buffer: slint::SharedPixelBuffer<slint::Rgb8Pixel>,
 }
 
 pub struct DecoderCommand {
