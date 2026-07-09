@@ -32,6 +32,8 @@ export component AppWindow inherits Window {
 
     callback play-paused();
     callback seeked(float);
+    callback seek-dragging(float);
+    callback seek-ended(float);
     callback seek-relative(float);
     callback fullscreen-toggled();
     callback controls-moved();
@@ -116,6 +118,8 @@ export component AppWindow inherits Window {
 
                         play-paused        => { root.play-paused(); }
                         seeked(val)        => { root.seeked(val); }
+                        seek-dragging(val) => { root.seek-dragging(val); }
+                        seek-ended(val)    => { root.seek-ended(val); }
                         seek-relative(d)   => { root.seek-relative(d); }
                         fullscreen-toggled => { root.fullscreen-toggled(); }
                         volume-toggled     => { root.volume-toggled(); }

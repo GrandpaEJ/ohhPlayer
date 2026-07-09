@@ -40,21 +40,45 @@ pub fn setup_callbacks(
         });
     }
 
-    // ── Seek (absolute) ───────────────────────────────────────────────────
+    // ── Seek (Dragging - Throttled Video Preview) ─────────────────────────
+    {
+        let cmd_s   = cmd.clone();
+        let state_s = state.clone();
+        let cd      = ui.seek_cooldown.clone();
+        let act     = ui.last_activity.clone();
+        let last_seek = Rc::new(RefCell::new(std::time::Instant::now()));
+        app.on_seek_dragging(move |frac| {
+            *cd.borrow_mut()  = std::time::Instant::now();
+            *act.borrow_mut() = std::time::Instant::now();
+            
+            let mut last = last_seek.borrow_mut();
+            if last.elapsed().as_millis() > 150 {
+                *last = std::time::Instant::now();
+                if let Ok(st) = state_s.lock() {
+                    if st.duration > 0.0 {
+                        let target = frac as f64 * st.duration;
+                        // ONLY seek video thread during dragging for fast preview
+                        cmd_s.lock().unwrap().seek_target = Some(target);
+                    }
+                }
+            }
+        });
+    }
+
+    // ── Seek (Ended - Final Full A/V Sync) ────────────────────────────────
     {
         let cmd_s   = cmd.clone();
         let audio_s = audio_shared.clone();
         let state_s = state.clone();
         let cd      = ui.seek_cooldown.clone();
         let act     = ui.last_activity.clone();
-        app.on_seeked(move |val| {
+        app.on_seek_ended(move |frac| {
             *cd.borrow_mut()  = std::time::Instant::now();
             *act.borrow_mut() = std::time::Instant::now();
             if let Ok(st) = state_s.lock() {
                 if st.duration > 0.0 {
-                    let target = val as f64 * st.duration;
+                    let target = frac as f64 * st.duration;
                     cmd_s.lock().unwrap().seek_target  = Some(target);
-                    // Bug #4 fix: tell audio decoder to seek too
                     audio_s.lock().unwrap().seek_to    = Some(target);
                 }
             }

@@ -1,7 +1,9 @@
 export component SeekBar {
     in-out property <float> slider-value;
     in property <bool> block-slider-update;
-    callback seeked(float);
+    callback seeked(float); // legacy, kept for relative seeks
+    callback seek-dragging(float);
+    callback seek-ended(float);
     callback controls-moved;
 
     height: 24px;
@@ -9,14 +11,14 @@ export component SeekBar {
     seek-ta := TouchArea {
         pointer-event(evt) => {
             root.controls-moved();
+            let v = max(0, min(1, self.mouse-x / parent.width));
             if evt.kind == PointerEventKind.move && self.pressed {
-                let v = max(0, min(1, self.mouse-x / parent.width));
-                if !root.block-slider-update { root.seeked(v); }
+                root.slider-value = v; // Instant visual update
+                if !root.block-slider-update { root.seek-dragging(v); }
+            } else if evt.kind == PointerEventKind.up {
+                root.slider-value = v;
+                if !root.block-slider-update { root.seek-ended(v); }
             }
-        }
-        clicked => {
-            root.controls-moved();
-            root.seeked(max(0, min(1, self.mouse-x / parent.width)));
         }
     }
 

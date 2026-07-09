@@ -22,6 +22,8 @@ export component Controls {
 
     callback play-paused;
     callback seeked(float);
+    callback seek-dragging(float);
+    callback seek-ended(float);
     callback seek-relative(float);
     callback fullscreen-toggled;
     callback volume-toggled;
@@ -51,6 +53,8 @@ export component Controls {
                 slider-value <=>        root.slider-value;
                 block-slider-update <=> root.block-slider-update;
                 seeked(val)          => { root.seeked(val); }
+                seek-dragging(val)   => { root.seek-dragging(val); }
+                seek-ended(val)      => { root.seek-ended(val); }
                 controls-moved       => { root.controls-moved(); }
             }
 
