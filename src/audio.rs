@@ -8,6 +8,8 @@ pub struct AudioOutput {
     pub buffer: Arc<Mutex<VecDeque<f32>>>,
     sample_rate: i32,
     channels: i32,
+    _sdl: Option<sdl2::Sdl>,
+    _device: Option<sdl2::audio::AudioDevice<AudioCallback>>,
 }
 
 impl AudioOutput {
@@ -16,6 +18,8 @@ impl AudioOutput {
             buffer: Arc::new(Mutex::new(VecDeque::new())),
             sample_rate: 44100,
             channels: 2,
+            _sdl: None,
+            _device: None,
         }
     }
 
@@ -27,7 +31,7 @@ impl AudioOutput {
         });
     }
 
-    pub fn init_sdl(&self) -> Result<sdl2::audio::AudioDevice<AudioCallback>, String> {
+    pub fn init_sdl(&mut self) -> Result<(), String> {
         let sdl = sdl2::init().map_err(|e| e.to_string())?;
         let audio = sdl.audio().map_err(|e| e.to_string())?;
 
@@ -42,7 +46,10 @@ impl AudioOutput {
             AudioCallback { buffer: buf.clone() }
         })?;
 
-        Ok(device)
+        device.resume();
+        self._sdl = Some(sdl);
+        self._device = Some(device);
+        Ok(())
     }
 }
 

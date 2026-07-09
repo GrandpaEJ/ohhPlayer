@@ -21,9 +21,9 @@ fn main() {
     let decoder = decoder::Decoder::new();
     decoder.start(path, 800, 424);
 
-    let audio_out = audio::AudioOutput::new();
+    let mut audio_out = audio::AudioOutput::new();
     audio_out.start(path);
-    let _audio_device = audio_out.init_sdl().ok();
+    let _ = audio_out.init_sdl();
 
     let cmd = decoder.command();
     let state = decoder.state();
