@@ -41,8 +41,8 @@ export component Controls {
 
             // ── ROW 1: Seek bar ──────────────────────────────────────────
             SeekBar {
-                slider-value:        root.slider-value;
-                block-slider-update: root.block-slider-update;
+                slider-value <=>        root.slider-value;
+                block-slider-update <=> root.block-slider-update;
                 seeked(val)          => { root.seeked(val); }
                 controls-moved       => { root.controls-moved(); }
             }
@@ -268,8 +268,8 @@ export component Controls {
 
         // ── Speed popup (floats above the button row) ─────────────────────
         SpeedPopup {
-            speed: root.speed;
-            speed-open: root.speed-open;
+            speed <=> root.speed;
+            speed-open <=> root.speed-open;
             speed-changed(val) => { root.speed = val; root.speed-changed(val); root.speed-open = false; }
             controls-moved     => { root.controls-moved(); }
         }

@@ -50,7 +50,7 @@ export component AppWindow inherits Window {
             }
 
             VideoLayer {
-                frame: root.frame;
+                frame <=> root.frame;
             }
 
             // ── Click / hover detection area ─────────────────────────────
@@ -95,13 +95,13 @@ export component AppWindow inherits Window {
                     animate opacity { duration: 300ms; easing: ease-in-out; }
 
                     Controls {
-                        playing:             root.playing;
-                        time-text:           root.time-text;
-                        slider-value:        root.slider-value;
-                        block-slider-update: root.block-slider-update;
-                        volume-level:        root.volume-level;
-                        is-fullscreen:       root.is-fullscreen;
-                        speed:               root.speed;
+                        playing <=>             root.playing;
+                        time-text <=>           root.time-text;
+                        slider-value <=>        root.slider-value;
+                        block-slider-update <=> root.block-slider-update;
+                        volume-level <=>        root.volume-level;
+                        is-fullscreen <=>       root.is-fullscreen;
+                        speed <=>               root.speed;
 
                         play-paused        => { root.play-paused(); }
                         seeked(val)        => { root.seeked(val); }
