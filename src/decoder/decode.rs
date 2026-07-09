@@ -165,11 +165,9 @@ pub(crate) fn decode_video(
         let mut seek_ts: i64 = 0;
 
         // ── Frame-pacing state ─────────────────────────────────────────────
-        // wall_start / pts_start track when playback began so we can sleep
-        // the correct amount before presenting each frame.
         let mut wall_start:    Option<std::time::Instant> = None;
         let mut pts_start:     f64 = 0.0;
-        let mut pause_elapsed: f64 = 0.0;   // accumulated seconds spent paused
+        let mut pause_elapsed: f64 = 0.0;
         let mut pause_since:   Option<std::time::Instant> = None;
         let mut skip_to_pts:   Option<f64> = None;
 
@@ -265,15 +263,23 @@ pub(crate) fn decode_video(
                 // How far into the stream this frame lives
                 let pts_elapsed  = frame_pts - pts_start;
 
-                // Speed factor from command (read fresh for accuracy)
-                let spd = command.lock().unwrap().speed as f64;
-                let adjusted_pts = if spd > 0.0 { pts_elapsed / spd } else { pts_elapsed };
+                if pts_elapsed < 0.0 {
+                    // PTS went backwards or wrapped, reset anchor to resync
+                    wall_start = None;
+                } else {
+                    // Speed factor from command (read fresh for accuracy)
+                    let spd = command.lock().unwrap().speed as f64;
+                    let adjusted_pts = if spd > 0.0 { pts_elapsed / spd } else { pts_elapsed };
 
-                if adjusted_pts > real_elapsed {
-                    let sleep_ms = ((adjusted_pts - real_elapsed) * 1000.0) as u64;
-                    // Guard: never sleep more than 1 s (catches edge-cases after seek)
-                    if sleep_ms < 1000 {
-                        std::thread::sleep(std::time::Duration::from_millis(sleep_ms));
+                    if adjusted_pts > real_elapsed {
+                        let sleep_ms = ((adjusted_pts - real_elapsed) * 1000.0) as u64;
+                        if sleep_ms > 1000 {
+                            // Massive gap in timestamps (>1s), reset anchor instead of 
+                            // dropping the sleep which causes permanent fast-forward desync.
+                            wall_start = None;
+                        } else {
+                            std::thread::sleep(std::time::Duration::from_millis(sleep_ms));
+                        }
                     }
                 }
 
