@@ -57,6 +57,7 @@ export component AppWindow inherits Window {
     callback open-recent-file(string);
     callback always-on-top-toggled();
     callback sleep-timer-changed(int);
+    callback custom-timer-requested(string);
     callback scale-mode-changed(int);
 
     VerticalBox {
@@ -148,6 +149,7 @@ export component AppWindow inherits Window {
                         controls-moved     => { root.controls-moved(); }
                         always-on-top-toggled => { root.always-on-top-toggled(); }
                         sleep-timer-changed(v) => { root.sleep-timer-changed(v); }
+                        custom-timer-requested(val) => { root.custom-timer-requested(val); }
                         scale-mode-changed(v) => { root.scale-mode-changed(v); }
                     }
                 }

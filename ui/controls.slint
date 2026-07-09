@@ -35,6 +35,7 @@ export component Controls {
     callback controls-moved;
     callback always-on-top-toggled;
     callback sleep-timer-changed(int);
+    callback custom-timer-requested(string);
     callback scale-mode-changed(int);
 
     property <bool> speed-open: false;
@@ -190,10 +191,11 @@ export component Controls {
         // ── Sleep Timer popup ──────────────────────────────────────────────
         SleepTimerPopup {
             x: parent.width - 150px;
-            y: -150px;
+            y: -205px;
             active-timer <=> root.sleep-timer-val;
             is-open <=> root.sleep-timer-open;
             timer-selected(val) => { root.sleep-timer-val = val; root.sleep-timer-changed(val); root.sleep-timer-open = false; }
+            custom-timer-requested(val) => { root.custom-timer-requested(val); root.sleep-timer-open = false; }
             controls-moved => { root.controls-moved(); }
         }
     }
