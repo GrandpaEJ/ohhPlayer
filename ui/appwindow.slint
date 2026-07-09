@@ -5,6 +5,8 @@ import { WindowKeyboard } from "./window-keyboard.slint";
 import { VideoLayer } from "./video-layer.slint";
 import { TopMenu } from "./top-menu.slint";
 import { RecentFilesOverlay, RecentFile } from "./recent-files.slint";
+import { KeyboardHelpOverlay } from "./keyboard-help.slint";
+import { OsdOverlay } from "./osd.slint";
 
 export component AppWindow inherits Window {
     title: "ohhPlayer";
@@ -30,8 +32,14 @@ export component AppWindow inherits Window {
     in-out property <int>    scale-mode: 1;
     in property <[RecentFile]> recent-files;
     in-out property <bool>   recent-menu-open: false;
+    in-out property <bool>   my-always-on-top: false;
+    in-out property <int>    sleep-timer-val;
+    in-out property <bool>   keyboard-help-open: false;
+    in-out property <string> osd-text: "";
+    in-out property <float>  osd-opacity: 0.0;
 
     forward-focus: my_kb;
+    always-on-top: root.my-always-on-top;
 
     callback play-paused();
     callback seeked(float);
@@ -47,6 +55,9 @@ export component AppWindow inherits Window {
     callback open-file();
     callback open-recent();
     callback open-recent-file(string);
+    callback always-on-top-toggled();
+    callback sleep-timer-changed(int);
+    callback scale-mode-changed(int);
 
     VerticalBox {
         padding: 0px;
@@ -62,6 +73,9 @@ export component AppWindow inherits Window {
                 close-window       => { root.close-window(); }
                 seek-relative(d)   => { root.seek-relative(d); }
                 controls-moved     => { root.controls-moved(); }
+                help-toggled       => { root.keyboard-help-open = !root.keyboard-help-open; }
+                mute-toggled       => { root.volume-toggled(); }
+                volume-step(d)     => { root.volume-changed(max(0.0, min(1.0, root.volume-level + d))); }
             }
 
             VideoLayer {
@@ -119,6 +133,8 @@ export component AppWindow inherits Window {
                         is-fullscreen <=>       root.is-fullscreen;
                         speed <=>               root.speed;
                         scale-mode <=>          root.scale-mode;
+                        always-on-top <=>       root.my-always-on-top;
+                        sleep-timer-val <=>     root.sleep-timer-val;
 
                         play-paused        => { root.play-paused(); }
                         seeked(val)        => { root.seeked(val); }
@@ -130,6 +146,9 @@ export component AppWindow inherits Window {
                         volume-changed(v)  => { root.volume-changed(v); }
                         speed-changed(s)   => { root.speed-changed(s); }
                         controls-moved     => { root.controls-moved(); }
+                        always-on-top-toggled => { root.always-on-top-toggled(); }
+                        sleep-timer-changed(v) => { root.sleep-timer-changed(v); }
+                        scale-mode-changed(v) => { root.scale-mode-changed(v); }
                     }
                 }
 
@@ -202,6 +221,19 @@ export component AppWindow inherits Window {
                     is-open: root.recent-menu-open;
                     close-clicked => { root.recent-menu-open = false; }
                     file-clicked(path) => { root.open-recent-file(path); }
+                }
+
+                // ── Keyboard Help Overlay ────────────────────────────────────
+                KeyboardHelpOverlay {
+                    is-open: root.keyboard-help-open;
+                    close-clicked => { root.keyboard-help-open = false; }
+                    controls-moved => { root.controls-moved(); }
+                }
+
+                // ── OSD Overlay ──────────────────────────────────────────────
+                OsdOverlay {
+                    text: root.osd-text;
+                    osd-opacity: root.osd-opacity;
                 }
 
             }

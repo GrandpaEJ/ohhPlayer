@@ -3394,6 +3394,8 @@ dependencies = [
  "libc",
  "rfd",
  "sdl2",
+ "serde",
+ "serde_json",
  "slint",
  "slint-build",
 ]

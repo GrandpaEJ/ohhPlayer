@@ -16,6 +16,7 @@ pub fn setup_callbacks(
     frame: Arc<Mutex<Option<DecodedFrame>>>,
     audio_shared: Arc<Mutex<AudioShared>>,
     ui: Rc<ui_state::UiState>,
+    settings: Rc<RefCell<crate::settings::AppSettings>>,
 ) -> slint::Timer {
     // ── Play / Pause ───────────────────────────────────────────────────────
     {
@@ -192,9 +193,18 @@ pub fn setup_callbacks(
     {
         let audio_v = audio_shared.clone();
         let act     = ui.last_activity.clone();
+        let weak    = app_weak.clone();
+        let set     = settings.clone();
         app.on_volume_changed(move |new_vol| {
             *act.borrow_mut() = std::time::Instant::now();
             audio_v.lock().unwrap().volume = new_vol;
+            set.borrow_mut().volume = new_vol;
+            set.borrow().save();
+            
+            if let Some(w) = weak.upgrade() {
+                w.set_osd_text(slint::SharedString::from(format!("Volume: {}%", (new_vol * 100.0) as i32)));
+                w.set_osd_opacity(1.0);
+            }
         });
     }
 
@@ -203,11 +213,77 @@ pub fn setup_callbacks(
         let cmd_spd = cmd.clone();
         let weak    = app_weak.clone();
         let act     = ui.last_activity.clone();
+        let set     = settings.clone();
         app.on_speed_changed(move |spd| {
             *act.borrow_mut() = std::time::Instant::now();
             cmd_spd.lock().unwrap().speed = spd;
+            set.borrow_mut().speed = spd;
+            set.borrow().save();
             if let Some(w) = weak.upgrade() {
                 w.set_speed(spd);
+                w.set_osd_text(slint::SharedString::from(format!("Speed: {:.1}x", spd)));
+                w.set_osd_opacity(1.0);
+            }
+        });
+    }
+
+    // ── Always On Top ─────────────────────────────────────────────────────
+    {
+        let weak = app_weak.clone();
+        let set  = settings.clone();
+        app.on_always_on_top_toggled(move || {
+            let mut s = set.borrow_mut();
+            s.always_on_top = !s.always_on_top;
+            s.save();
+            if let Some(w) = weak.upgrade() {
+                w.set_my_always_on_top(s.always_on_top);
+                w.set_osd_text(slint::SharedString::from(if s.always_on_top { "Pinned" } else { "Unpinned" }));
+                w.set_osd_opacity(1.0);
+            }
+        });
+    }
+
+    // ── Scale Mode ────────────────────────────────────────────────────────
+    {
+        let set = settings.clone();
+        let weak = app_weak.clone();
+        app.on_scale_mode_changed(move |mode| {
+            set.borrow_mut().scale_mode = mode;
+            set.borrow().save();
+            let label = match mode {
+                0 => "Fit (Letterbox)",
+                1 => "Stretch",
+                2 => "Zoom (Crop)",
+                3 => "100%",
+                4 => "1:1",
+                5 => "16:9",
+                _ => "9:16",
+            };
+            if let Some(w) = weak.upgrade() {
+                w.set_osd_text(slint::SharedString::from(format!("Scale: {}", label)));
+                w.set_osd_opacity(1.0);
+            }
+        });
+    }
+
+    // ── Sleep Timer ───────────────────────────────────────────────────────
+    let sleep_target: Rc<RefCell<Option<std::time::Instant>>> = Rc::new(RefCell::new(None));
+    {
+        let st = sleep_target.clone();
+        let weak = app_weak.clone();
+        app.on_sleep_timer_changed(move |mins| {
+            if mins > 0 {
+                *st.borrow_mut() = Some(std::time::Instant::now() + std::time::Duration::from_secs(mins as u64 * 60));
+            } else {
+                *st.borrow_mut() = None;
+            }
+            if let Some(w) = weak.upgrade() {
+                if mins > 0 {
+                    w.set_osd_text(slint::SharedString::from(format!("Sleep timer: {}m", mins)));
+                } else {
+                    w.set_osd_text(slint::SharedString::from("Sleep timer: Off"));
+                }
+                w.set_osd_opacity(1.0);
             }
         });
     }
@@ -221,6 +297,7 @@ pub fn setup_callbacks(
 
     let mut last_w = 0_u32;
     let mut last_h = 0_u32;
+    let cmd_timer = cmd.clone();
 
     let timer = slint::Timer::default();
     timer.start(
@@ -231,6 +308,22 @@ pub fn setup_callbacks(
                 Some(a) => a,
                 None    => return,
             };
+
+            // ── OSD Fading ───────────────────────────────────────────────
+            let current_osd_op = a.get_osd_opacity();
+            if current_osd_op > 0.0 {
+                let new_op = (current_osd_op - 0.015).max(0.0);
+                a.set_osd_opacity(new_op);
+            }
+
+            // ── Sleep Timer Check ────────────────────────────────────────
+            if let Some(target) = *sleep_target.borrow() {
+                if std::time::Instant::now() >= target {
+                    *sleep_target.borrow_mut() = None;
+                    cmd_timer.lock().unwrap().quit = true;
+                    std::process::exit(0);
+                }
+            }
 
             if let Some(f) = frame.lock().unwrap().take() {
                 a.set_frame(slint::Image::from_rgb8(f.buffer));

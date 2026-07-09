@@ -6,6 +6,7 @@ import { VolumeControl } from "./controls-volume.slint";
 import { SpeedButton } from "./controls-speed-button.slint";
 import { ScaleButton } from "./controls-scale-button.slint";
 import { FullscreenButton } from "./controls-fullscreen-button.slint";
+import { SleepTimerPopup } from "./sleep-timer-popup.slint";
 
 // Production-grade controls: seek bar on top, button row below.
 // Window management (min/max/close) removed — handled by the OS title bar.
@@ -19,6 +20,8 @@ export component Controls {
     in-out property <bool>   is-fullscreen;
     in-out property <float>  speed: 1.0;
     in-out property <int>    scale-mode;
+    in-out property <bool>   always-on-top;
+    in-out property <int>    sleep-timer-val;
 
     callback play-paused;
     callback seeked(float);
@@ -30,8 +33,12 @@ export component Controls {
     callback volume-changed(float);
     callback speed-changed(float);
     callback controls-moved;
+    callback always-on-top-toggled;
+    callback sleep-timer-changed(int);
+    callback scale-mode-changed(int);
 
     property <bool> speed-open: false;
+    property <bool> sleep-timer-open: false;
 
     width: 100%;
     height: 100%;
@@ -112,6 +119,42 @@ export component Controls {
 
                 // ── Right cluster ─────────────────────────────────────────
 
+                // Always On Top button
+                Rectangle {
+                    width: 32px; height: 32px; border-radius: 6px;
+                    background: aot-ta.has_hover ? rgba(255,255,255,0.1) : transparent;
+                    animate background { duration: 150ms; }
+                    Text {
+                        text: "📌";
+                        color: root.always-on-top ? #0cf : #ccc;
+                        font-size: 14px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                    aot-ta := TouchArea {
+                        clicked => { root.always-on-top-toggled(); }
+                        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+                    }
+                }
+
+                // Sleep Timer button
+                Rectangle {
+                    width: 32px; height: 32px; border-radius: 6px;
+                    background: sleep-ta.has_hover ? rgba(255,255,255,0.1) : transparent;
+                    animate background { duration: 150ms; }
+                    Text {
+                        text: "🕒";
+                        color: root.sleep-timer-val > 0 ? #0cf : #ccc;
+                        font-size: 14px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                    sleep-ta := TouchArea {
+                        clicked => { root.sleep-timer-open = !root.sleep-timer-open; root.speed-open = false; }
+                        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+                    }
+                }
+
                 // Speed selector button
                 SpeedButton {
                     speed: root.speed;
@@ -123,7 +166,7 @@ export component Controls {
                 // Scale mode toggle button
                 ScaleButton {
                     scale-mode <=> root.scale-mode;
-                    clicked => { } // Already updates its own property
+                    clicked => { root.scale-mode-changed(root.scale-mode); }
                     controls-moved => { root.controls-moved(); }
                 }
 
@@ -142,6 +185,16 @@ export component Controls {
             speed-open <=> root.speed-open;
             speed-changed(val) => { root.speed = val; root.speed-changed(val); root.speed-open = false; }
             controls-moved     => { root.controls-moved(); }
+        }
+
+        // ── Sleep Timer popup ──────────────────────────────────────────────
+        SleepTimerPopup {
+            x: parent.width - 150px;
+            y: -150px;
+            active-timer <=> root.sleep-timer-val;
+            is-open <=> root.sleep-timer-open;
+            timer-selected(val) => { root.sleep-timer-val = val; root.sleep-timer-changed(val); root.sleep-timer-open = false; }
+            controls-moved => { root.controls-moved(); }
         }
     }
 }

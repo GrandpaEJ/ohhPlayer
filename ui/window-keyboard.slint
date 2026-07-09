@@ -4,6 +4,9 @@ export component WindowKeyboard inherits FocusScope {
     callback close-window;
     callback seek-relative(float);
     callback controls-moved;
+    callback help-toggled;
+    callback mute-toggled;
+    callback volume-step(float);
 
     key-pressed(event) => {
             if event.text == " "                           { root.play-paused();       return accept; }
@@ -15,6 +18,10 @@ export component WindowKeyboard inherits FocusScope {
             if event.text == "l"                          { root.seek-relative(10);    return accept; }
             if event.text == ","                          { root.seek-relative(-5);    return accept; }
             if event.text == "."                          { root.seek-relative(5);     return accept; }
+            if event.text == "m" || event.text == "M"     { root.mute-toggled();       return accept; }
+            if event.text == "?" || event.text == "h" || event.text == "H" { root.help-toggled(); return accept; }
+            if event.text == "Up"                         { root.volume-step(0.05);    return accept; }
+            if event.text == "Down"                       { root.volume-step(-0.05);   return accept; }
             return reject;
         }
 }

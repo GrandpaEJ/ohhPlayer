@@ -2,10 +2,12 @@ mod app;
 mod audio;
 mod decoder;
 mod ui_state;
+mod settings;
 
 slint::include_modules!();
 
 use std::rc::Rc;
+use std::cell::RefCell;
 
 extern "C" fn sigint(_: i32) {
     unsafe { libc::_exit(0); }
@@ -54,6 +56,12 @@ fn main() {
     let app      = AppWindow::new().unwrap();
     let app_weak = app.as_weak();
 
+    let settings = Rc::new(RefCell::new(settings::AppSettings::load()));
+    app.set_volume_level(settings.borrow().volume);
+    app.set_speed(settings.borrow().speed);
+    app.set_scale_mode(settings.borrow().scale_mode);
+    app.set_my_always_on_top(settings.borrow().always_on_top);
+
     let args: Vec<String> = std::env::args().collect();
     let path = if args.len() >= 2 { Some(args[1].clone()) } else { None };
 
@@ -78,7 +86,11 @@ fn main() {
     let frame = decoder.frame();
     let ui    = Rc::new(ui_state::UiState::new());
 
-    let _timer = app::setup_callbacks(&app, app_weak, cmd, state, frame, audio_shared, ui);
+    // Apply loaded settings to backend
+    cmd.lock().unwrap().speed = settings.borrow().speed;
+    audio_shared.lock().unwrap().volume = settings.borrow().volume;
+
+    let _timer = app::setup_callbacks(&app, app_weak, cmd, state, frame, audio_shared, ui, settings.clone());
 
     app.run().unwrap();
     decoder.command().lock().unwrap().quit = true;

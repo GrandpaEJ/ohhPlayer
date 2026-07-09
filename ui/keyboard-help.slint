@@ -1,0 +1,90 @@
+export component KeyboardHelpOverlay {
+    in property <bool> is-open;
+    callback close-clicked;
+    callback controls-moved;
+
+    width: 100%; height: 100%;
+
+    Rectangle {
+        x: 0; y: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        opacity: root.is-open ? 1.0 : 0.0;
+        animate opacity { duration: 200ms; }
+
+        // Block clicks from passing through
+        TouchArea {
+            pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+        }
+
+        if root.is-open : Rectangle {
+            width: 400px;
+            height: 300px;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            background: rgba(30, 30, 40, 0.95);
+            border-radius: 12px;
+            border-width: 1px;
+            border-color: rgba(255, 255, 255, 0.1);
+
+            VerticalLayout {
+                padding: 24px;
+                spacing: 16px;
+
+                Text {
+                    text: "Keyboard Shortcuts";
+                    color: #fff;
+                    font-size: 18px;
+                    font-weight: 700;
+                    horizontal-alignment: center;
+                }
+
+                Rectangle { height: 1px; background: rgba(255, 255, 255, 0.1); }
+
+                HorizontalLayout {
+                    spacing: 20px;
+                    VerticalLayout {
+                        spacing: 12px;
+                        width: 150px;
+                        Text { text: "Space"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
+                        Text { text: "F"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
+                        Text { text: "J / ,"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
+                        Text { text: "L / ."; color: #0cf; font-weight: 600; horizontal-alignment: right; }
+                        Text { text: "Up / Down"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
+                        Text { text: "M"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
+                        Text { text: "?"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
+                    }
+                    VerticalLayout {
+                        spacing: 12px;
+                        Text { text: "Play / Pause"; color: #ccc; }
+                        Text { text: "Fullscreen"; color: #ccc; }
+                        Text { text: "Seek Backward (-10s / -5s)"; color: #ccc; }
+                        Text { text: "Seek Forward (+10s / +5s)"; color: #ccc; }
+                        Text { text: "Volume Up / Down"; color: #ccc; }
+                        Text { text: "Mute"; color: #ccc; }
+                        Text { text: "Help"; color: #ccc; }
+                    }
+                }
+
+                Rectangle { vertical-stretch: 1; }
+
+                Rectangle {
+                    height: 36px;
+                    background: close-btn.has_hover ? rgba(255,255,255,0.2) : rgba(255,255,255,0.1);
+                    border-radius: 6px;
+                    animate background { duration: 150ms; }
+                    Text {
+                        text: "Close";
+                        color: #fff;
+                        font-weight: 600;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                    close-btn := TouchArea {
+                        clicked => { root.close-clicked(); }
+                        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+                    }
+                }
+            }
+        }
+    }
+}
