@@ -7,7 +7,12 @@ slint::include_modules!();
 use std::cell::RefCell;
 use std::rc::Rc;
 
+extern "C" fn sigint(_: i32) {
+    unsafe { libc::_exit(0); }
+}
+
 fn main() {
+    unsafe { libc::signal(libc::SIGINT, sigint as *const () as libc::sighandler_t); }
     let app = AppWindow::new().unwrap();
     let app_weak = app.as_weak();
 
@@ -96,7 +101,7 @@ fn main() {
         let act = ui.last_activity.clone();
         app.on_close_window(move || {
             *act.borrow_mut() = std::time::Instant::now();
-            std::process::exit(0);
+            unsafe { libc::_exit(0); }
         });
     }
 
