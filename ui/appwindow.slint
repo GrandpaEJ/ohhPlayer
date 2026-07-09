@@ -1,11 +1,12 @@
-import { Slider, HorizontalBox, VerticalBox } from "std-widgets.slint";
+import { VerticalBox } from "std-widgets.slint";
+import { Controls } from "./controls.slint";
+import { CenterPlayButton } from "./center-button.slint";
 
 export component AppWindow inherits Window {
     title: "ohhPlayer";
     preferred-width: 900px;
     preferred-height: 520px;
     background: #0a0a12;
-
 
     in-out property <image> frame;
     in-out property <float> position;
@@ -18,7 +19,6 @@ export component AppWindow inherits Window {
     in-out property <float> center-btn-opacity: 1;
     in-out property <float> volume-level: 0.8;
     in-out property <bool> is-fullscreen;
-    in-out property <bool> is-maximized;
 
     callback play-paused();
     callback seeked(float);
@@ -27,8 +27,6 @@ export component AppWindow inherits Window {
     callback controls-moved();
     callback volume-toggled();
     callback close-window();
-    callback maximize-window();
-    callback minimize-window();
 
     VerticalBox {
         padding: 0px;
@@ -84,25 +82,10 @@ export component AppWindow inherits Window {
                         height: 70px;
                         opacity: root.center-btn-opacity;
 
-                        Rectangle {
-                            width: 100%;
-                            height: 100%;
-                            border-color: rgba(255, 255, 255, 0.45);
-                            border-width: 2px;
-                            background: rgba(0, 0, 0, 0.45);
-
-                            Text {
-                                text: root.playing ? "⏸" : "▶";
-                                color: #fff;
-                                font-size: 30px;
-                                x: (parent.width - self.preferred-width) / 2;
-                                y: (parent.height - self.preferred-height) / 2;
-                            }
-
-                            TouchArea {
-                                moved => { root.controls-moved(); }
-                                clicked => { root.play-paused(); }
-                            }
+                        CenterPlayButton {
+                            playing: root.playing;
+                            clicked => { root.play-paused(); }
+                            controls-moved => { root.controls-moved(); }
                         }
                     }
 
@@ -113,109 +96,20 @@ export component AppWindow inherits Window {
                         height: 56px;
                         opacity: root.controls-opacity;
 
-                        Rectangle {
-                            width: 100%;
-                            height: 100%;
-                            background: rgba(8, 8, 18, 0.88);
-                        }
+                        Controls {
+                            playing: root.playing;
+                            time-text: root.time-text;
+                            slider-value: root.slider-value;
+                            block-slider-update: root.block-slider-update;
+                            volume-level: root.volume-level;
+                            is-fullscreen: root.is-fullscreen;
 
-                        HorizontalBox {
-                            padding-left: 10px;
-                            padding-right: 10px;
-                            spacing: 8px;
-                            alignment: center;
-
-                            Rectangle {
-                                width: 40px; height: 36px;
-                                background: rgba(255, 255, 255, 0.06);
-
-                                Text {
-                                    text: root.playing ? "⏸" : "▶";
-                                    color: #eee;
-                                    font-size: 17px;
-                                    x: (parent.width - self.preferred-width) / 2;
-                                    y: (parent.height - self.preferred-height) / 2;
-                                }
-
-                                TouchArea {
-                                    moved => { root.controls-moved(); }
-                                    clicked => { root.play-paused(); }
-                                }
-                            }
-
-                            Text {
-                                text: root.time-text;
-                                color: #aaa;
-                                font-size: 12px;
-                                vertical-alignment: center;
-                                min-width: 105px;
-                                horizontal-alignment: center;
-                            }
-
-                            Slider {
-                                minimum: 0;
-                                maximum: 1;
-                                value: root.slider-value;
-                                changed(new-val) => {
-                                    root.controls-moved();
-                                    if !root.block-slider-update {
-                                        root.seeked(new-val);
-                                    }
-                                }
-                            }
-
-                            Rectangle {
-                                width: 28px; height: 28px;
-
-                                Text {
-                                    text: root.volume-level > 0 ? "🔊" : "🔇";
-                                    color: #ccc;
-                                    font-size: 14px;
-                                    x: (parent.width - self.preferred-width) / 2;
-                                    y: (parent.height - self.preferred-height) / 2;
-                                }
-
-                                TouchArea {
-                                    moved => { root.controls-moved(); }
-                                    clicked => { root.volume-toggled(); }
-                                }
-                            }
-
-                            Rectangle {
-                                width: 36px; height: 36px;
-                                background: rgba(255, 255, 255, 0.06);
-
-                                Text {
-                                    text: root.is-fullscreen ? "⧉" : "⛶";
-                                    color: #ccc;
-                                    font-size: 15px;
-                                    x: (parent.width - self.preferred-width) / 2;
-                                    y: (parent.height - self.preferred-height) / 2;
-                                }
-
-                                TouchArea {
-                                    moved => { root.controls-moved(); }
-                                    clicked => { root.fullscreen-toggled(); }
-                                }
-                            }
-
-                            Rectangle {
-                                width: 36px; height: 36px;
-                                background: rgba(255, 255, 255, 0.06);
-
-                                Text {
-                                    text: "✕";
-                                    color: #e55;
-                                    font-size: 15px;
-                                    x: (parent.width - self.preferred-width) / 2;
-                                    y: (parent.height - self.preferred-height) / 2;
-                                }
-
-                                TouchArea {
-                                    moved => { root.controls-moved(); }
-                                    clicked => { root.close-window(); }
-                                }
-                            }
+                            play-paused => { root.play-paused(); }
+                            seeked(val) => { root.seeked(val); }
+                            fullscreen-toggled => { root.fullscreen-toggled(); }
+                            volume-toggled => { root.volume-toggled(); }
+                            close-window => { root.close-window(); }
+                            controls-moved => { root.controls-moved(); }
                         }
                     }
                 }

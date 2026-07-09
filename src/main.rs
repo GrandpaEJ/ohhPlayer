@@ -1,4 +1,5 @@
 mod decoder;
+mod ui_state;
 
 slint::include_modules!();
 
@@ -10,81 +11,72 @@ fn main() {
     let app_weak = app.as_weak();
 
     let decoder = decoder::Decoder::new();
-
-    let target_w: u32 = 800;
-    let target_h: u32 = 424;
-
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
         eprintln!("Usage: {} <video_file>", args[0]);
         std::process::exit(1);
     }
-    let video_path = args[1].clone();
-
-    decoder.start(video_path, target_w, target_h);
+    decoder.start(args[1].clone(), 800, 424);
 
     let cmd = decoder.command();
     let state = decoder.state();
     let frame = decoder.frame();
+    let ui = Rc::new(ui_state::UiState::new());
+    let vol = Rc::new(RefCell::new(0.8f32));
 
-    let last_slider_set = Rc::new(RefCell::new(-0.01f64));
-    let seek_cooldown = Rc::new(RefCell::new(std::time::Instant::now()));
-    let controls_opacity = Rc::new(RefCell::new(1.0f32));
-    let center_opacity = Rc::new(RefCell::new(1.0f32));
-    let last_activity = Rc::new(RefCell::new(std::time::Instant::now()));
-    let la_play = last_activity.clone();
-
-    let cmd_play = cmd.clone();
-    let state_play = state.clone();
+    let cmd_p = cmd.clone();
+    let state_p = state.clone();
+    let act_p = ui.last_activity.clone();
     app.on_play_paused(move || {
-        let mut c = cmd_play.lock().unwrap();
-        let st = state_play.lock().unwrap();
+        let mut c = cmd_p.lock().unwrap();
+        let st = state_p.lock().unwrap();
         c.playing = !st.playing;
-        *la_play.borrow_mut() = std::time::Instant::now();
+        *act_p.borrow_mut() = std::time::Instant::now();
     });
 
     {
-        let cmd_seek = cmd.clone();
-        let state_seek = state.clone();
-        let cd = seek_cooldown.clone();
-        let la = last_activity.clone();
+        let cmd_s = cmd.clone();
+        let state_s = state.clone();
+        let cd = ui.seek_cooldown.clone();
+        let act = ui.last_activity.clone();
         app.on_seeked(move |val| {
             *cd.borrow_mut() = std::time::Instant::now();
-            *la.borrow_mut() = std::time::Instant::now();
-            let st = state_seek.lock().unwrap();
-            if st.duration > 0.0 {
-                let target = val as f64 * st.duration;
-                cmd_seek.lock().unwrap().seek_target = Some(target);
+            *act.borrow_mut() = std::time::Instant::now();
+            if let Ok(st) = state_s.lock() {
+                if st.duration > 0.0 {
+                    cmd_s.lock().unwrap().seek_target = Some(val as f64 * st.duration);
+                }
             }
         });
     }
 
     {
-        let cmd_rel = cmd.clone();
-        let state_rel = state.clone();
-        let cd = seek_cooldown.clone();
-        let la = last_activity.clone();
+        let cmd_r = cmd.clone();
+        let state_r = state.clone();
+        let cd = ui.seek_cooldown.clone();
+        let act = ui.last_activity.clone();
         app.on_seek_relative(move |delta| {
             *cd.borrow_mut() = std::time::Instant::now();
-            *la.borrow_mut() = std::time::Instant::now();
-            let st = state_rel.lock().unwrap();
-            let new_pos = (st.position + delta as f64).max(0.0).min(st.duration);
-            cmd_rel.lock().unwrap().seek_target = Some(new_pos);
+            *act.borrow_mut() = std::time::Instant::now();
+            if let Ok(st) = state_r.lock() {
+                let new_pos = (st.position + delta as f64).max(0.0).min(st.duration);
+                cmd_r.lock().unwrap().seek_target = Some(new_pos);
+            }
         });
     }
 
     {
-        let la = last_activity.clone();
+        let act = ui.last_activity.clone();
         app.on_controls_moved(move || {
-            *la.borrow_mut() = std::time::Instant::now();
+            *act.borrow_mut() = std::time::Instant::now();
         });
     }
 
     {
         let weak = app_weak.clone();
-        let la = last_activity.clone();
+        let act = ui.last_activity.clone();
         app.on_fullscreen_toggled(move || {
-            *la.borrow_mut() = std::time::Instant::now();
+            *act.borrow_mut() = std::time::Instant::now();
             if let Some(w) = weak.upgrade() {
                 let fs = !w.window().is_fullscreen();
                 w.window().set_fullscreen(fs);
@@ -94,43 +86,20 @@ fn main() {
     }
 
     {
-        let weak = app_weak.clone();
-        let la = last_activity.clone();
-        app.on_maximize_window(move || {
-            *la.borrow_mut() = std::time::Instant::now();
-            if let Some(w) = weak.upgrade() {
-                let fs = !w.window().is_fullscreen();
-                w.window().set_fullscreen(fs);
-                w.set_is_fullscreen(fs);
-            }
-        });
-    }
-
-    {
-        let weak = app_weak.clone();
-        app.on_minimize_window(move || {
-            if let Some(w) = weak.upgrade() {
-                let _ = w.window().hide();
-            }
-        });
-    }
-
-    {
-        let la = last_activity.clone();
+        let act = ui.last_activity.clone();
         app.on_close_window(move || {
-            *la.borrow_mut() = std::time::Instant::now();
+            *act.borrow_mut() = std::time::Instant::now();
             std::process::exit(0);
         });
     }
 
-    let vol = Rc::new(RefCell::new(0.8f32));
     {
-        let vol_state = vol.clone();
-        let la = last_activity.clone();
+        let v = vol.clone();
+        let act = ui.last_activity.clone();
         app.on_volume_toggled(move || {
-            *la.borrow_mut() = std::time::Instant::now();
-            let mut v = vol_state.borrow_mut();
-            *v = if *v > 0.0 { 0.0 } else { 0.8 };
+            *act.borrow_mut() = std::time::Instant::now();
+            let mut vv = v.borrow_mut();
+            *vv = if *vv > 0.0 { 0.0 } else { 0.8 };
         });
     }
 
@@ -160,43 +129,35 @@ fn main() {
                 (st.position, st.duration, st.playing)
             };
 
-            a.set_time_text(slint::SharedString::from(format!(
-                "{:02}:{:02} / {:02}:{:02}",
-                pos as u32 / 60,
-                pos as u32 % 60,
-                dur as u32 / 60,
-                dur as u32 % 60,
-            )));
+            a.set_time_text(slint::SharedString::from(ui_state::format_time(pos, dur)));
 
-            if dur > 0.0 {
-                let slider_val = pos / dur;
-                if (slider_val - *last_slider_set.borrow()).abs() > 0.005 {
-                    let in_cd = seek_cooldown.borrow().elapsed()
-                        < std::time::Duration::from_millis(250);
-                    if !in_cd {
-                        a.set_block_slider_update(true);
-                        a.set_slider_value(slider_val as f32);
-                        a.set_block_slider_update(false);
-                    }
-                    *last_slider_set.borrow_mut() = slider_val;
+            let idle = ui.last_activity.borrow().elapsed().as_secs_f32();
+            let op = ui_state::compute_opacity(
+                playing,
+                idle,
+                *ui.controls_opacity.borrow(),
+                *ui.center_opacity.borrow(),
+                dur,
+                pos,
+                *ui.last_slider_set.borrow(),
+            );
+
+            if op.needs_slider_update {
+                let in_cd = ui.seek_cooldown.borrow().elapsed()
+                    < std::time::Duration::from_millis(250);
+                if !in_cd {
+                    a.set_block_slider_update(true);
+                    a.set_slider_value(op.slider_val);
+                    a.set_block_slider_update(false);
                 }
+                *ui.last_slider_set.borrow_mut() = op.slider_val as f64;
             }
 
-            let idle = last_activity.borrow().elapsed().as_secs_f32();
-            let controls_target = if playing && idle > 3.0 { 0.25 } else { 1.0 };
-            let center_target = if playing && idle > 3.0 { 0.0 } else if playing { 0.0 } else { 1.0 };
+            a.set_controls_opacity(op.controls_target);
+            *ui.controls_opacity.borrow_mut() = op.controls_target;
 
-            let cur_ctrl = *controls_opacity.borrow();
-            let new_ctrl = cur_ctrl + (controls_target - cur_ctrl) * 0.06;
-            let new_ctrl = new_ctrl.clamp(0.0, 1.0);
-            a.set_controls_opacity(new_ctrl);
-            *controls_opacity.borrow_mut() = new_ctrl;
-
-            let cur_center = *center_opacity.borrow();
-            let new_center = cur_center + (center_target - cur_center) * 0.05;
-            let new_center = new_center.clamp(0.0, 1.0);
-            a.set_center_btn_opacity(new_center);
-            *center_opacity.borrow_mut() = new_center;
+            a.set_center_btn_opacity(op.center_target);
+            *ui.center_opacity.borrow_mut() = op.center_target;
 
             a.set_playing(playing);
             a.set_position(pos as f32);
@@ -206,6 +167,5 @@ fn main() {
     );
 
     app.run().unwrap();
-
     decoder.command().lock().unwrap().quit = true;
 }

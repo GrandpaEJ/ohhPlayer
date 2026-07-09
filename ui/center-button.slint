@@ -1,0 +1,26 @@
+export component CenterPlayButton {
+    in-out property <bool> playing;
+    callback clicked;
+    callback controls-moved;
+
+    Rectangle {
+        width: 100%;
+        height: 100%;
+        border-color: rgba(255, 255, 255, 0.45);
+        border-width: 2px;
+        background: rgba(0, 0, 0, 0.45);
+
+        Text {
+            text: root.playing ? "⏸" : "▶";
+            color: #fff;
+            font-size: 30px;
+            x: (parent.width - self.preferred-width) / 2;
+            y: (parent.height - self.preferred-height) / 2;
+        }
+
+        TouchArea {
+            moved => { root.controls-moved(); }
+            clicked => { root.clicked(); }
+        }
+    }
+}
