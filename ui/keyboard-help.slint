@@ -9,6 +9,7 @@ export component KeyboardHelpOverlay {
         x: 0; y: 0; width: 100%; height: 100%;
         background: rgba(0, 0, 0, 0.7);
         opacity: root.is-open ? 1.0 : 0.0;
+        visible: self.opacity > 0.01;
         animate opacity { duration: 200ms; }
 
         // Block clicks from passing through
