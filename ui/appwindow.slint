@@ -22,6 +22,7 @@ export component AppWindow inherits Window {
     in-out property <float>  volume-level: 0.8;
     in-out property <bool>   is-fullscreen;
     in-out property <float>  speed: 1.0;
+    in property <string>     debug-text;
 
     forward-focus: my_kb;
 
@@ -144,6 +145,26 @@ export component AppWindow inherits Window {
                             if evt.kind == PointerEventKind.move { root.controls-moved(); }
                         }
                         clicked => { root.close-window(); }
+                    }
+                }
+
+                // ── Debug Overlay (Top Right, left of close button) ──────────
+                Rectangle {
+                    x: parent.width - self.preferred-width - 55px;
+                    y: 12px;
+                    width: debug_txt.preferred-width + 12px;
+                    height: debug_txt.preferred-height + 6px;
+                    background: rgba(0, 0, 0, 0.4);
+                    border-radius: 4px;
+                    opacity: root.debug-text == "" ? 0.0 : 1.0;
+
+                    debug_txt := Text {
+                        text: root.debug-text;
+                        color: #0f0; // Hacker green for show off
+                        font-size: 11px;
+                        font-weight: 700;
+                        x: (parent.width - self.preferred-width) / 2;
+                        y: (parent.height - self.preferred-height) / 2;
                     }
                 }
 

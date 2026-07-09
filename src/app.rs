@@ -146,6 +146,12 @@ pub fn setup_callbacks(
     }
 
     // ── UI refresh timer (16 ms ≈ 60 fps) ────────────────────────────────
+    let debug_state = Rc::new(RefCell::new((
+        std::time::Instant::now(),
+        0_u32,
+        slint::SharedString::from(""),
+    )));
+
     let timer = slint::Timer::default();
     timer.start(
         slint::TimerMode::Repeated,
@@ -206,6 +212,29 @@ pub fn setup_callbacks(
             a.set_position(pos as f32);
             a.set_duration(dur as f32);
             a.set_volume_level(audio_shared.lock().unwrap().volume);
+
+            // ── Debug Overlay Update ─────────────────────────────────────────
+            let mut ds = debug_state.borrow_mut();
+            ds.1 += 1;
+            let elapsed = ds.0.elapsed().as_secs_f32();
+            if elapsed >= 1.0 {
+                let fps = ds.1 as f32 / elapsed;
+                ds.1 = 0;
+                ds.0 = std::time::Instant::now();
+                
+                let mut ram_mb = 0.0;
+                if let Ok(statm) = std::fs::read_to_string("/proc/self/statm") {
+                    if let Some(res_pages) = statm.split_whitespace().nth(1) {
+                        if let Ok(pages) = res_pages.parse::<u64>() {
+                            let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) } as u64;
+                            ram_mb = (pages * page_size) as f32 / 1_048_576.0;
+                        }
+                    }
+                }
+                
+                ds.2 = slint::SharedString::from(format!("{:>4.1} FPS  | {:>5.1} MB", fps, ram_mb));
+            }
+            a.set_debug_text(ds.2.clone());
         },
     );
 
