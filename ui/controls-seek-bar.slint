@@ -4,7 +4,7 @@ export component SeekBar {
     callback seeked(float);
     callback controls-moved;
 
-    height: 18px;
+    height: 24px;
 
     seek-ta := TouchArea {
         pointer-event(evt) => {
@@ -22,34 +22,34 @@ export component SeekBar {
 
     // Track background
     Rectangle {
-        y: (parent.height - 4px) / 2;
-        height: seek-ta.has_hover ? 6px : 4px;
+        y: (parent.height - (seek-ta.has_hover || seek-ta.pressed ? 6px : 4px)) / 2;
+        height: seek-ta.has_hover || seek-ta.pressed ? 6px : 4px;
         width: 100%;
-        border-radius: 3px;
-        background: rgba(255,255,255,0.18);
-        animate height { duration: 120ms; easing: ease-out; }
+        border-radius: seek-ta.has_hover || seek-ta.pressed ? 3px : 2px;
+        background: rgba(255,255,255,0.20);
+        animate height, y, border-radius { duration: 150ms; easing: ease-out; }
     }
     // Filled portion
     Rectangle {
-        y: (parent.height - (seek-ta.has_hover ? 6px : 4px)) / 2;
+        y: (parent.height - (seek-ta.has_hover || seek-ta.pressed ? 6px : 4px)) / 2;
         x: 0;
-        height: seek-ta.has_hover ? 6px : 4px;
+        height: seek-ta.has_hover || seek-ta.pressed ? 6px : 4px;
         width: parent.width * root.slider-value;
-        border-radius: 3px;
+        border-radius: seek-ta.has_hover || seek-ta.pressed ? 3px : 2px;
         background: @linear-gradient(90deg, #5ba4f5, #a78bfa);
-        animate height { duration: 120ms; easing: ease-out; }
+        animate height, y, border-radius { duration: 150ms; easing: ease-out; }
     }
-    // Thumb — only visible on hover
+    // Thumb — pops and scales up on hover/press
     Rectangle {
-        x: parent.width * root.slider-value - 7px;
-        y: (parent.height - 14px) / 2;
-        width: 14px;
-        height: 14px;
-        border-radius: 7px;
+        x: parent.width * root.slider-value - (seek-ta.has_hover || seek-ta.pressed ? 7px : 0px);
+        y: (parent.height - (seek-ta.has_hover || seek-ta.pressed ? 14px : 0px)) / 2;
+        width: seek-ta.has_hover || seek-ta.pressed ? 14px : 0px;
+        height: seek-ta.has_hover || seek-ta.pressed ? 14px : 0px;
+        border-radius: seek-ta.has_hover || seek-ta.pressed ? 7px : 0px;
         background: #fff;
-        opacity: seek-ta.has_hover ? 1.0 : 0.0;
-        drop-shadow-blur: 4px;
-        drop-shadow-color: rgba(90,160,255,0.6);
-        animate opacity { duration: 150ms; }
+        opacity: seek-ta.has_hover || seek-ta.pressed ? 1.0 : 0.0;
+        drop-shadow-blur: 6px;
+        drop-shadow-color: rgba(167, 139, 250, 0.5);
+        animate width, height, x, y, border-radius, opacity { duration: 150ms; easing: cubic-bezier(0.175, 0.885, 0.32, 1.275); } // bouncy cubic-bezier
     }
 }

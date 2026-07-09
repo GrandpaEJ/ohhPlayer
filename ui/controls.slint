@@ -182,15 +182,18 @@ export component Controls {
                         background: vol-ta.has_hover ? rgba(255,255,255,0.9) : rgba(255,255,255,0.7);
                         animate background { duration: 120ms; }
                     }
-                    // Thumb
+                    // Thumb — pops and scales up on hover
                     Rectangle {
-                        x: parent.width * root.volume-level - 6px;
-                        y: (parent.height - 12px) / 2;
-                        width: 12px; height: 12px;
-                        border-radius: 6px;
+                        x: parent.width * root.volume-level - (vol-ta.has_hover || vol-ta.pressed ? 6px : 0px);
+                        y: (parent.height - (vol-ta.has_hover || vol-ta.pressed ? 12px : 0px)) / 2;
+                        width: vol-ta.has_hover || vol-ta.pressed ? 12px : 0px;
+                        height: vol-ta.has_hover || vol-ta.pressed ? 12px : 0px;
+                        border-radius: vol-ta.has_hover || vol-ta.pressed ? 6px : 0px;
                         background: #fff;
-                        opacity: vol-ta.has_hover ? 1.0 : 0.0;
-                        animate opacity { duration: 120ms; }
+                        opacity: vol-ta.has_hover || vol-ta.pressed ? 1.0 : 0.0;
+                        drop-shadow-blur: 4px;
+                        drop-shadow-color: rgba(255, 255, 255, 0.4);
+                        animate width, height, x, y, border-radius, opacity { duration: 150ms; easing: cubic-bezier(0.175, 0.885, 0.32, 1.275); }
                     }
                 }
 
