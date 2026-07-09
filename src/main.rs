@@ -1,3 +1,4 @@
+mod audio;
 mod decoder;
 mod ui_state;
 
@@ -10,13 +11,19 @@ fn main() {
     let app = AppWindow::new().unwrap();
     let app_weak = app.as_weak();
 
-    let decoder = decoder::Decoder::new();
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
         eprintln!("Usage: {} <video_file>", args[0]);
         std::process::exit(1);
     }
-    decoder.start(args[1].clone(), 800, 424);
+    let path = &args[1];
+
+    let decoder = decoder::Decoder::new();
+    decoder.start(path, 800, 424);
+
+    let audio_out = audio::AudioOutput::new();
+    audio_out.start(path);
+    let _audio_device = audio_out.init_sdl().ok();
 
     let cmd = decoder.command();
     let state = decoder.state();
