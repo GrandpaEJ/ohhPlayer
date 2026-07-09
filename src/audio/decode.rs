@@ -1,95 +1,11 @@
-use std::collections::VecDeque;
 use std::ffi::CString;
 use std::ptr;
 use std::sync::{Arc, Mutex};
 use std::mem;
 
-/// State shared between main thread and the audio decode/SDL threads.
-pub struct AudioShared {
-    pub buffer:   VecDeque<f32>,
-    pub volume:   f32,
-    pub playing:  bool,
-    /// When Some(t), the decode loop should seek to `t` seconds.
-    pub seek_to:  Option<f64>,
-}
+use super::AudioShared;
 
-impl AudioShared {
-    fn new() -> Self {
-        Self {
-            buffer:  VecDeque::new(),
-            volume:  0.8,
-            playing: true,
-            seek_to: None,
-        }
-    }
-}
-
-pub struct AudioOutput {
-    pub shared: Arc<Mutex<AudioShared>>,
-    _sdl:    Option<sdl2::Sdl>,
-    _device: Option<sdl2::audio::AudioDevice<AudioCallback>>,
-}
-
-impl AudioOutput {
-    pub fn new() -> Self {
-        Self {
-            shared:  Arc::new(Mutex::new(AudioShared::new())),
-            _sdl:    None,
-            _device: None,
-        }
-    }
-
-    pub fn start(&self, path: &str) {
-        let shared = self.shared.clone();
-        let path   = path.to_owned();
-        std::thread::spawn(move || {
-            decode_audio(&path, shared);
-        });
-    }
-
-    pub fn init_sdl(&mut self) -> Result<(), String> {
-        let sdl   = sdl2::init().map_err(|e| e.to_string())?;
-        let audio = sdl.audio().map_err(|e| e.to_string())?;
-
-        let desired = sdl2::audio::AudioSpecDesired {
-            freq:     Some(44100),
-            channels: Some(2),
-            samples:  None,
-        };
-
-        let shared  = self.shared.clone();
-        let device  = audio.open_playback(None, &desired, move |_| {
-            AudioCallback { shared: shared.clone() }
-        })?;
-
-        device.resume();
-        self._sdl    = Some(sdl);
-        self._device = Some(device);
-        Ok(())
-    }
-}
-
-pub struct AudioCallback {
-    shared: Arc<Mutex<AudioShared>>,
-}
-
-impl sdl2::audio::AudioCallback for AudioCallback {
-    type Channel = f32;
-    fn callback(&mut self, out: &mut [f32]) {
-        let mut s = self.shared.lock().unwrap();
-        if !s.playing {
-            // Bug #3 fix: output silence when paused instead of draining buffer
-            for sample in out.iter_mut() { *sample = 0.0; }
-            return;
-        }
-        let vol = s.volume;
-        for sample in out.iter_mut() {
-            *sample = s.buffer.pop_front().unwrap_or(0.0) * vol;
-        }
-    }
-}
-
-fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
+pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
     use ffmpeg_sys_next::*;
     unsafe {
         let path_c      = CString::new(path).unwrap();
