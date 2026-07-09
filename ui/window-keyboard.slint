@@ -1,0 +1,22 @@
+export component WindowKeyboard {
+    callback play-paused;
+    callback fullscreen-toggled;
+    callback close-window;
+    callback seek-relative(float);
+    callback controls-moved;
+
+    FocusScope {
+        key-pressed(event) => {
+            if event.text == " "                           { root.play-paused();       return accept; }
+            if event.text == "f" || event.text == "F"     { root.fullscreen-toggled(); return accept; }
+            // Bug fix: ESC and Q now close the player, not pause it
+            if event.text == "Escape"
+            || event.text == "q" || event.text == "Q"     { root.close-window();       return accept; }
+            if event.text == "j"                          { root.seek-relative(-10);   return accept; }
+            if event.text == "l"                          { root.seek-relative(10);    return accept; }
+            if event.text == ","                          { root.seek-relative(-5);    return accept; }
+            if event.text == "."                          { root.seek-relative(5);     return accept; }
+            return reject;
+        }
+    }
+}
