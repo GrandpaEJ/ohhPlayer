@@ -69,12 +69,21 @@ fn main() {
     let mut audio_out = audio::AudioOutput::new();
     let _ = audio_out.init_sdl();
 
-    let start_path = path.unwrap_or_else(|| "".to_string());
+    let start_path = path.clone().unwrap_or_else(|| "".to_string());
     if !start_path.is_empty() {
         save_to_history(&start_path);
     }
     decoder.start(&start_path, 800, 424);
     audio_out.start(&start_path);
+
+    // Apply initial resume position if applicable
+    if !start_path.is_empty() {
+        let resume_pos = settings.borrow().get_position(&start_path);
+        if resume_pos > 0.0 {
+            decoder.command().lock().unwrap().seek_target = Some(resume_pos);
+            audio_out.shared.lock().unwrap().seek_to = Some(resume_pos);
+        }
+    }
 
     app.set_recent_files(get_history_model());
 
@@ -90,7 +99,7 @@ fn main() {
     cmd.lock().unwrap().speed = settings.borrow().speed;
     audio_shared.lock().unwrap().volume = settings.borrow().volume;
 
-    let _timer = app::setup_callbacks(&app, app_weak, cmd, state, frame, audio_shared, ui, settings.clone());
+    let _timer = app::setup_callbacks(&app, app_weak, cmd.clone(), state, frame, audio_shared.clone(), ui, settings.clone(), path.clone());
 
     app.run().unwrap();
     decoder.command().lock().unwrap().quit = true;

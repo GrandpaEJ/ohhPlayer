@@ -17,6 +17,7 @@ pub fn setup_callbacks(
     audio_shared: Arc<Mutex<AudioShared>>,
     ui: Rc<ui_state::UiState>,
     settings: Rc<RefCell<crate::settings::AppSettings>>,
+    initial_path: Option<String>,
 ) -> slint::Timer {
     // ── Play / Pause ───────────────────────────────────────────────────────
     {
@@ -114,10 +115,22 @@ pub fn setup_callbacks(
     }
 
     // ── Close window (ESC / Q / native X button) ─────────────────────────
+    let current_file: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(initial_path));
     {
         let cmd_q = cmd.clone();
         let audio_q = audio_shared.clone();
+        let set_q = settings.clone();
+        let cur_file_q = current_file.clone();
+        let state_q = state.clone();
         app.on_close_window(move || {
+            // Save final position
+            if let Some(ref cf) = *cur_file_q.borrow() {
+                let pos = state_q.lock().unwrap().position;
+                let dur = state_q.lock().unwrap().duration;
+                let pos_to_save = if dur > 0.0 && pos >= dur - 2.0 { 0.0 } else { pos };
+                set_q.borrow_mut().save_position(cf, pos_to_save);
+            }
+            
             cmd_q.lock().unwrap().quit = true;
             audio_q.lock().unwrap().quit = true;
             std::process::exit(0);
@@ -128,33 +141,79 @@ pub fn setup_callbacks(
     {
         let cmd_o = cmd.clone();
         let audio_o = audio_shared.clone();
+        let state_o = state.clone();
         let weak = app_weak.clone();
+        let set = settings.clone();
+        let cur_file = current_file.clone();
         app.on_open_file(move || {
             if let Some(path) = rfd::FileDialog::new()
                 .add_filter("Video", &["mp4", "mkv", "avi", "webm", "mov"])
                 .pick_file() 
             {
                 let p = path.to_string_lossy().to_string();
+                
+                // Save current file's position before switching
+                if let Some(ref cf) = *cur_file.borrow() {
+                    let pos = state_o.lock().unwrap().position;
+                    let dur = state_o.lock().unwrap().duration;
+                    let pos_to_save = if dur > 0.0 && pos >= dur - 2.0 { 0.0 } else { pos };
+                    set.borrow_mut().save_position(cf, pos_to_save);
+                }
+                *cur_file.borrow_mut() = Some(p.clone());
+
                 crate::save_to_history(&p);
                 if let Some(a) = weak.upgrade() {
                     a.set_recent_files(crate::get_history_model());
                 }
-                cmd_o.lock().unwrap().load_file = Some(p.clone());
-                audio_o.lock().unwrap().load_file = Some(p);
+
+                let resume_pos = set.borrow().get_position(&p);
+
+                let mut c = cmd_o.lock().unwrap();
+                let mut au = audio_o.lock().unwrap();
+                c.load_file = Some(p.clone());
+                au.load_file = Some(p);
+                
+                if resume_pos > 0.0 {
+                    c.seek_target = Some(resume_pos);
+                    au.seek_to = Some(resume_pos);
+                }
             }
         });
 
         let cmd_r = cmd.clone();
         let audio_r = audio_shared.clone();
+        let state_r = state.clone();
         let weak2 = app_weak.clone();
+        let set2 = settings.clone();
+        let cur_file2 = current_file.clone();
         app.on_open_recent_file(move |path| {
             let p = path.as_str().to_string();
+            
+            // Save current file's position before switching
+            if let Some(ref cf) = *cur_file2.borrow() {
+                let pos = state_r.lock().unwrap().position;
+                let dur = state_r.lock().unwrap().duration;
+                let pos_to_save = if dur > 0.0 && pos >= dur - 2.0 { 0.0 } else { pos };
+                set2.borrow_mut().save_position(cf, pos_to_save);
+            }
+            *cur_file2.borrow_mut() = Some(p.clone());
+
             crate::save_to_history(&p);
             if let Some(a) = weak2.upgrade() {
                 a.set_recent_files(crate::get_history_model());
             }
-            cmd_r.lock().unwrap().load_file = Some(p.clone());
-            audio_r.lock().unwrap().load_file = Some(p);
+
+            let resume_pos = set2.borrow().get_position(&p);
+
+            let mut c = cmd_r.lock().unwrap();
+            let mut au = audio_r.lock().unwrap();
+            c.load_file = Some(p.clone());
+            au.load_file = Some(p);
+
+            if resume_pos > 0.0 {
+                c.seek_target = Some(resume_pos);
+                au.seek_to = Some(resume_pos);
+            }
         });
     }
 
@@ -298,6 +357,8 @@ pub fn setup_callbacks(
     let mut last_w = 0_u32;
     let mut last_h = 0_u32;
     let cmd_timer = cmd.clone();
+    let mut last_save_time = std::time::Instant::now();
+    let set_timer = settings.clone();
 
     let timer = slint::Timer::default();
     timer.start(
@@ -333,6 +394,15 @@ pub fn setup_callbacks(
                 let st = state.lock().unwrap();
                 (st.position, st.duration, st.playing, st.video_width, st.video_height)
             };
+
+            // Periodically save file position (every 5 seconds)
+            if playing && last_save_time.elapsed().as_secs() >= 5 {
+                last_save_time = std::time::Instant::now();
+                if let Some(ref cf) = *current_file.borrow() {
+                    let pos_to_save = if dur > 0.0 && pos >= dur - 2.0 { 0.0 } else { pos };
+                    set_timer.borrow_mut().save_position(cf, pos_to_save);
+                }
+            }
 
             // Auto-scale window to video aspect ratio when dimensions change
             if vw > 0 && vh > 0 && (vw != last_w || vh != last_h) {
