@@ -4,78 +4,95 @@ use std::ptr;
 use std::sync::{Arc, Mutex};
 use std::mem;
 
+/// State shared between main thread and the audio decode/SDL threads.
+pub struct AudioShared {
+    pub buffer:   VecDeque<f32>,
+    pub volume:   f32,
+    pub playing:  bool,
+    /// When Some(t), the decode loop should seek to `t` seconds.
+    pub seek_to:  Option<f64>,
+}
+
+impl AudioShared {
+    fn new() -> Self {
+        Self {
+            buffer:  VecDeque::new(),
+            volume:  0.8,
+            playing: true,
+            seek_to: None,
+        }
+    }
+}
+
 pub struct AudioOutput {
-    pub buffer: Arc<Mutex<VecDeque<f32>>>,
-    pub volume: Arc<Mutex<f32>>,
-    sample_rate: i32,
-    channels: i32,
-    _sdl: Option<sdl2::Sdl>,
+    pub shared: Arc<Mutex<AudioShared>>,
+    _sdl:    Option<sdl2::Sdl>,
     _device: Option<sdl2::audio::AudioDevice<AudioCallback>>,
 }
 
 impl AudioOutput {
     pub fn new() -> Self {
         Self {
-            buffer: Arc::new(Mutex::new(VecDeque::new())),
-            volume: Arc::new(Mutex::new(0.8f32)),
-            sample_rate: 44100,
-            channels: 2,
-            _sdl: None,
+            shared:  Arc::new(Mutex::new(AudioShared::new())),
+            _sdl:    None,
             _device: None,
         }
     }
 
     pub fn start(&self, path: &str) {
-        let buf = self.buffer.clone();
-        let path = path.to_owned();
+        let shared = self.shared.clone();
+        let path   = path.to_owned();
         std::thread::spawn(move || {
-            decode_audio(&path, buf);
+            decode_audio(&path, shared);
         });
     }
 
     pub fn init_sdl(&mut self) -> Result<(), String> {
-        let sdl = sdl2::init().map_err(|e| e.to_string())?;
+        let sdl   = sdl2::init().map_err(|e| e.to_string())?;
         let audio = sdl.audio().map_err(|e| e.to_string())?;
 
         let desired = sdl2::audio::AudioSpecDesired {
-            freq: Some(self.sample_rate),
-            channels: Some(self.channels as u8),
-            samples: None,
+            freq:     Some(44100),
+            channels: Some(2),
+            samples:  None,
         };
 
-        let buf = self.buffer.clone();
-        let vol = self.volume.clone();
-        let device = audio.open_playback(None, &desired, move |_| {
-            AudioCallback { buffer: buf.clone(), volume: vol.clone() }
+        let shared  = self.shared.clone();
+        let device  = audio.open_playback(None, &desired, move |_| {
+            AudioCallback { shared: shared.clone() }
         })?;
 
         device.resume();
-        self._sdl = Some(sdl);
+        self._sdl    = Some(sdl);
         self._device = Some(device);
         Ok(())
     }
 }
 
 pub struct AudioCallback {
-    buffer: Arc<Mutex<VecDeque<f32>>>,
-    volume: Arc<Mutex<f32>>,
+    shared: Arc<Mutex<AudioShared>>,
 }
 
 impl sdl2::audio::AudioCallback for AudioCallback {
     type Channel = f32;
     fn callback(&mut self, out: &mut [f32]) {
-        let vol = *self.volume.lock().unwrap();
-        let mut buf = self.buffer.lock().unwrap();
+        let mut s = self.shared.lock().unwrap();
+        if !s.playing {
+            // Bug #3 fix: output silence when paused instead of draining buffer
+            for sample in out.iter_mut() { *sample = 0.0; }
+            return;
+        }
+        let vol = s.volume;
         for sample in out.iter_mut() {
-            *sample = buf.pop_front().unwrap_or(0.0) * vol;
+            *sample = s.buffer.pop_front().unwrap_or(0.0) * vol;
         }
     }
 }
 
-fn decode_audio(path: &str, out_buffer: Arc<Mutex<VecDeque<f32>>>) {
+fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
     use ffmpeg_sys_next::*;
     unsafe {
-        let path_c = CString::new(path).unwrap();
+        let path_c      = CString::new(path).unwrap();
         let mut fmt_ctx: *mut AVFormatContext = ptr::null_mut();
 
         if avformat_open_input(&mut fmt_ctx, path_c.as_ptr(), ptr::null_mut(), ptr::null_mut()) < 0 {
@@ -88,7 +105,7 @@ fn decode_audio(path: &str, out_buffer: Arc<Mutex<VecDeque<f32>>>) {
             return;
         }
 
-        let nb = (*fmt_ctx).nb_streams as usize;
+        let nb      = (*fmt_ctx).nb_streams as usize;
         let streams = std::slice::from_raw_parts((*fmt_ctx).streams, nb);
         let mut audio_idx = -1i32;
         for (i, &s) in streams.iter().enumerate() {
@@ -102,8 +119,9 @@ fn decode_audio(path: &str, out_buffer: Arc<Mutex<VecDeque<f32>>>) {
             return;
         }
 
-        let as_ = *streams[audio_idx as usize];
-        let codec = avcodec_find_decoder((*as_.codecpar).codec_id);
+        let as_       = *streams[audio_idx as usize];
+        let audio_tb  = as_.time_base;
+        let codec     = avcodec_find_decoder((*as_.codecpar).codec_id);
         if codec.is_null() {
             avformat_close_input(&mut fmt_ctx);
             return;
@@ -122,9 +140,9 @@ fn decode_audio(path: &str, out_buffer: Arc<Mutex<VecDeque<f32>>>) {
         }
 
         let src_rate = (*codec_ctx).sample_rate;
-        let src_fmt = (*codec_ctx).sample_fmt;
-        let dst_rate = 44100;
-        let dst_fmt = AVSampleFormat::AV_SAMPLE_FMT_FLT;
+        let src_fmt  = (*codec_ctx).sample_fmt;
+        let dst_rate = 44100i32;
+        let dst_fmt  = AVSampleFormat::AV_SAMPLE_FMT_FLT;
 
         let mut dst_layout: AVChannelLayout = mem::zeroed();
         av_channel_layout_default(&mut dst_layout, 2);
@@ -149,10 +167,41 @@ fn decode_audio(path: &str, out_buffer: Arc<Mutex<VecDeque<f32>>>) {
         }
         swr_init(swr);
 
-        let mut pkt = av_packet_alloc();
+        let mut pkt   = av_packet_alloc();
         let mut frame = av_frame_alloc();
 
         loop {
+            // ── Bug #3 fix: pause — back-pressure by waiting ─────────────
+            // ── Bug #4 fix: seek — flush buffer and jump ─────────────────
+            {
+                let mut s = shared.lock().unwrap();
+
+                if let Some(target) = s.seek_to.take() {
+                    // Flush decode pipeline
+                    avcodec_flush_buffers(codec_ctx);
+                    // Clear audio buffer to eliminate stale samples causing A/V desync
+                    s.buffer.clear();
+                    let seek_ts = (target * audio_tb.den as f64 / audio_tb.num as f64) as i64;
+                    drop(s);
+                    av_seek_frame(fmt_ctx, audio_idx, seek_ts, AVSEEK_FLAG_BACKWARD);
+                    continue;
+                }
+
+                if !s.playing {
+                    drop(s);
+                    std::thread::sleep(std::time::Duration::from_millis(8));
+                    continue;
+                }
+
+                // Don't over-buffer — apply back-pressure so RAM stays bounded
+                // 44100 samples/sec × 2 ch × 5 sec headroom
+                if s.buffer.len() >= 44100 * 2 * 5 {
+                    drop(s);
+                    std::thread::sleep(std::time::Duration::from_millis(20));
+                    continue;
+                }
+            }
+
             if av_read_frame(fmt_ctx, pkt) < 0 { break; }
 
             if (*pkt).stream_index != audio_idx {
@@ -164,9 +213,9 @@ fn decode_audio(path: &str, out_buffer: Arc<Mutex<VecDeque<f32>>>) {
             av_packet_unref(pkt);
 
             while avcodec_receive_frame(codec_ctx, frame) >= 0 {
-                let nb_samples = (*frame).nb_samples;
-                let delay = swr_get_delay(swr, src_rate as i64);
-                let dst_nb = av_rescale_rnd(
+                let nb_samples  = (*frame).nb_samples;
+                let delay       = swr_get_delay(swr, src_rate as i64);
+                let dst_nb      = av_rescale_rnd(
                     delay + nb_samples as i64,
                     dst_rate as i64,
                     src_rate as i64,
@@ -174,11 +223,7 @@ fn decode_audio(path: &str, out_buffer: Arc<Mutex<VecDeque<f32>>>) {
                 ) as i32;
 
                 let dst_buf_size = av_samples_get_buffer_size(
-                    ptr::null_mut(),
-                    2,
-                    dst_nb,
-                    dst_fmt,
-                    1,
+                    ptr::null_mut(), 2, dst_nb, dst_fmt, 1,
                 );
                 let mut dst_buf = av_malloc(dst_buf_size as usize) as *mut u8;
 
@@ -191,13 +236,10 @@ fn decode_audio(path: &str, out_buffer: Arc<Mutex<VecDeque<f32>>>) {
                 );
 
                 if converted > 0 {
-                    let total = (converted * 2) as usize;
+                    let total   = (converted * 2) as usize;
                     let samples = std::slice::from_raw_parts(dst_buf as *const f32, total);
-                    let mut buf = out_buffer.lock().unwrap();
-                    // Buffer up to 10 seconds worth of audio (raw samples, volume applied at playback)
-                    if buf.len() < 44100 * 10 {
-                        buf.extend(samples.iter());
-                    }
+                    // Note: volume applied at playback time in AudioCallback, not here
+                    shared.lock().unwrap().buffer.extend(samples.iter());
                 }
 
                 av_free(dst_buf as *mut libc::c_void);

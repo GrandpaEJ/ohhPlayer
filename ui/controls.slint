@@ -79,13 +79,13 @@ export component Controls {
                     moved => {
                         root.controls-moved();
                         if self.pressed {
-                            let v = (self.mouse-x / parent.width).clamp(0, 1);
+                            let v = max(0, min(1, self.mouse-x / parent.width));
                             if !root.block-slider-update { root.seeked(v); }
                         }
                     }
                     clicked => {
                         root.controls-moved();
-                        let v = (self.mouse-x / parent.width).clamp(0, 1);
+                        let v = max(0, min(1, self.mouse-x / parent.width));
                         root.seeked(v);
                     }
                 }
@@ -220,14 +220,14 @@ export component Controls {
                         background: #fff;
                     }
                     TouchArea {
-                        moved    => {
+                        moved => {
                             root.controls-moved();
                             if self.pressed {
-                                root.volume-changed((self.mouse-x / parent.width).clamp(0, 1));
+                                root.volume-changed(max(0, min(1, self.mouse-x / parent.width)));
                             }
                         }
-                        clicked  => {
-                            root.volume-changed((self.mouse-x / parent.width).clamp(0, 1));
+                        clicked => {
+                            root.volume-changed(max(0, min(1, self.mouse-x / parent.width)));
                         }
                     }
                 }

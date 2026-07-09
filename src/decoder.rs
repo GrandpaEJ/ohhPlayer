@@ -30,28 +30,28 @@ pub struct DecoderState {
 
 pub struct Decoder {
     command: Arc<Mutex<DecoderCommand>>,
-    state: Arc<Mutex<DecoderState>>,
-    frame: Arc<Mutex<Option<DecodedFrame>>>,
+    state:   Arc<Mutex<DecoderState>>,
+    frame:   Arc<Mutex<Option<DecodedFrame>>>,
 }
 
 impl Decoder {
     pub fn new() -> Self {
         Self {
             command: Arc::new(Mutex::new(DecoderCommand::default())),
-            state: Arc::new(Mutex::new(DecoderState::default())),
-            frame: Arc::new(Mutex::new(None)),
+            state:   Arc::new(Mutex::new(DecoderState::default())),
+            frame:   Arc::new(Mutex::new(None)),
         }
     }
 
     pub fn command(&self) -> Arc<Mutex<DecoderCommand>> { self.command.clone() }
-    pub fn state(&self) -> Arc<Mutex<DecoderState>> { self.state.clone() }
-    pub fn frame(&self) -> Arc<Mutex<Option<DecodedFrame>>> { self.frame.clone() }
+    pub fn state(&self)   -> Arc<Mutex<DecoderState>>   { self.state.clone()   }
+    pub fn frame(&self)   -> Arc<Mutex<Option<DecodedFrame>>> { self.frame.clone() }
 
     pub fn start(&self, path: &str, target_w: u32, target_h: u32) {
-        let cmd = self.command.clone();
+        let cmd   = self.command.clone();
         let state = self.state.clone();
         let frame = self.frame.clone();
-        let path = path.to_owned();
+        let path  = path.to_owned();
         std::thread::spawn(move || {
             decode_video(&path, target_w, target_h, cmd, state, frame);
         });
@@ -62,8 +62,8 @@ fn decode_video(
     path: &str,
     target_w: u32,
     target_h: u32,
-    command: Arc<Mutex<DecoderCommand>>,
-    state: Arc<Mutex<DecoderState>>,
+    command:   Arc<Mutex<DecoderCommand>>,
+    state:     Arc<Mutex<DecoderState>>,
     frame_out: Arc<Mutex<Option<DecodedFrame>>>,
 ) {
     use ffmpeg_sys_next::*;
@@ -81,7 +81,7 @@ fn decode_video(
             return;
         }
 
-        let nb = (*fmt_ctx).nb_streams as usize;
+        let nb      = (*fmt_ctx).nb_streams as usize;
         let streams = std::slice::from_raw_parts((*fmt_ctx).streams, nb);
         let mut video_idx = -1i32;
         for (i, &s) in streams.iter().enumerate() {
@@ -96,8 +96,8 @@ fn decode_video(
             return;
         }
 
-        let vs = *streams[video_idx as usize];
-        let tb = vs.time_base;
+        let vs  = *streams[video_idx as usize];
+        let tb  = vs.time_base;
         let dur = if vs.duration > 0 {
             vs.duration as f64 * tb.num as f64 / tb.den as f64
         } else {
@@ -146,7 +146,7 @@ fn decode_video(
         }
 
         let rgb_size = av_image_get_buffer_size(AVPixelFormat::AV_PIX_FMT_RGB24, target_w as i32, target_h as i32, 1);
-        let rgb_buf = av_malloc(rgb_size as usize) as *mut u8;
+        let rgb_buf  = av_malloc(rgb_size as usize) as *mut u8;
         let mut rgb_frame = av_frame_alloc();
         av_image_fill_arrays(
             (*rgb_frame).data.as_mut_ptr(),
@@ -158,12 +158,59 @@ fn decode_video(
             1,
         );
 
-        let mut pkt = av_packet_alloc();
-        let mut frame = av_frame_alloc();
-        let mut do_seek = false;
+        let mut pkt      = av_packet_alloc();
+        let mut frame    = av_frame_alloc();
+        let mut do_seek  = false;
         let mut seek_ts: i64 = 0;
 
+        // ── Frame-pacing state ─────────────────────────────────────────────
+        // wall_start / pts_start track when playback began so we can sleep
+        // the correct amount before presenting each frame.
+        let mut wall_start:    Option<std::time::Instant> = None;
+        let mut pts_start:     f64 = 0.0;
+        let mut pause_elapsed: f64 = 0.0;   // accumulated seconds spent paused
+        let mut pause_since:   Option<std::time::Instant> = None;
+
         loop {
+            // ── Process commands before every packet ─────────────────────
+            {
+                let mut c = command.lock().unwrap();
+                if c.quit { break; }
+
+                // Bug #6 fix: seek is checked every iteration, not only for video pkts
+                if let Some(target) = c.seek_target.take() {
+                    do_seek   = true;
+                    seek_ts   = (target * tb.den as f64 / tb.num as f64) as i64;
+                }
+
+                let playing = c.playing;
+                drop(c);
+                state.lock().unwrap().playing = playing;
+
+                if !playing {
+                    // Bug #3 fix: properly track pause duration for frame-pacing
+                    if pause_since.is_none() {
+                        pause_since = Some(std::time::Instant::now());
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(8));
+                    continue;
+                } else if let Some(ps) = pause_since.take() {
+                    // Resumed — accumulate the pause gap so timing stays correct
+                    pause_elapsed += ps.elapsed().as_secs_f64();
+                }
+            }
+
+            // ── Seek ─────────────────────────────────────────────────────
+            if do_seek {
+                av_seek_frame(fmt_ctx, video_idx, seek_ts, AVSEEK_FLAG_BACKWARD);
+                avcodec_flush_buffers(codec_ctx);
+                do_seek = false;
+                // Bug #2 fix: reset frame-pacing anchor so we don't sleep forever
+                wall_start    = None;
+                pause_elapsed = 0.0;
+                pause_since   = None;
+            }
+
             let ret = av_read_frame(fmt_ctx, pkt);
             if ret < 0 { break; }
 
@@ -172,33 +219,44 @@ fn decode_video(
                 continue;
             }
 
-            {
-                let mut c = command.lock().unwrap();
-                if c.quit { break; }
-                if let Some(target) = c.seek_target.take() {
-                    do_seek = true;
-                    seek_ts = (target * tb.den as f64 / tb.num as f64) as i64;
-                }
-                let p = c.playing;
-                state.lock().unwrap().playing = p;
-                if !p {
-                    drop(c);
-                    std::thread::sleep(std::time::Duration::from_millis(5));
-                    av_packet_unref(pkt);
-                    continue;
-                }
-            }
-
-            if do_seek {
-                av_seek_frame(fmt_ctx, video_idx, seek_ts, AVSEEK_FLAG_BACKWARD);
-                avcodec_flush_buffers(codec_ctx);
-                do_seek = false;
-            }
-
             avcodec_send_packet(codec_ctx, pkt);
             av_packet_unref(pkt);
 
             while avcodec_receive_frame(codec_ctx, frame) >= 0 {
+                // ── Get PTS ───────────────────────────────────────────────
+                let frame_pts = if (*frame).pts != i64::MIN && (*frame).pts != i64::MAX {
+                    (*frame).pts as f64 * tb.num as f64 / tb.den as f64
+                } else {
+                    continue; // Skip frames without a valid timestamp
+                };
+
+                state.lock().unwrap().position = frame_pts;
+
+                // ── Bug #2 fix: PTS-based frame pacing ────────────────────
+                // Anchor on the first frame presented after a start/seek.
+                if wall_start.is_none() {
+                    wall_start = Some(std::time::Instant::now());
+                    pts_start  = frame_pts;
+                }
+                let wall = wall_start.unwrap();
+                // How long since playback anchor (minus paused time)
+                let real_elapsed = wall.elapsed().as_secs_f64() - pause_elapsed;
+                // How far into the stream this frame lives
+                let pts_elapsed  = frame_pts - pts_start;
+
+                // Speed factor from command (read fresh for accuracy)
+                let spd = command.lock().unwrap().speed as f64;
+                let adjusted_pts = if spd > 0.0 { pts_elapsed / spd } else { pts_elapsed };
+
+                if adjusted_pts > real_elapsed {
+                    let sleep_ms = ((adjusted_pts - real_elapsed) * 1000.0) as u64;
+                    // Guard: never sleep more than 1 s (catches edge-cases after seek)
+                    if sleep_ms < 1000 {
+                        std::thread::sleep(std::time::Duration::from_millis(sleep_ms));
+                    }
+                }
+
+                // ── Scale frame to RGB ────────────────────────────────────
                 sws_scale(
                     sws_ctx,
                     (*frame).data.as_ptr() as *const *const u8,
@@ -210,21 +268,16 @@ fn decode_video(
                 );
 
                 let row_bytes = target_w as usize * 3;
-                let mut buf = vec![0u8; (target_h as usize) * row_bytes];
+                let mut buf   = vec![0u8; (target_h as usize) * row_bytes];
                 for y in 0..target_h as usize {
                     let src = (*rgb_frame).data[0].offset((y * (*rgb_frame).linesize[0] as usize) as isize);
                     let dst = &mut buf[y * row_bytes..(y + 1) * row_bytes];
                     dst.copy_from_slice(std::slice::from_raw_parts(src, row_bytes));
                 }
 
-                if (*frame).pts != std::i64::MIN && (*frame).pts != i64::MAX {
-                    let pos = (*frame).pts as f64 * tb.num as f64 / tb.den as f64;
-                    state.lock().unwrap().position = pos;
-                }
-
                 *frame_out.lock().unwrap() = Some(DecodedFrame {
-                    data: buf,
-                    width: target_w,
+                    data:   buf,
+                    width:  target_w,
                     height: target_h,
                 });
             }

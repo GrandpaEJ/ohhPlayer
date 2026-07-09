@@ -14,7 +14,7 @@ extern "C" fn sigint(_: i32) {
 
 fn main() {
     unsafe { libc::signal(libc::SIGINT, sigint as *const () as libc::sighandler_t); }
-    let app = AppWindow::new().unwrap();
+    let app      = AppWindow::new().unwrap();
     let app_weak = app.as_weak();
 
     let args: Vec<String> = std::env::args().collect();
@@ -31,8 +31,8 @@ fn main() {
     audio_out.start(path);
     let _ = audio_out.init_sdl();
 
-    // Shared volume — used by both the SDL callback (applies gain) and the UI
-    let vol: Arc<Mutex<f32>> = audio_out.volume.clone();
+    // Single shared state blob for audio (volume, playing, seek)
+    let audio_shared: Arc<Mutex<audio::AudioShared>> = audio_out.shared.clone();
 
     let cmd   = decoder.command();
     let state = decoder.state();
@@ -41,13 +41,16 @@ fn main() {
 
     // ── Play / Pause ───────────────────────────────────────────────────────
     {
-        let cmd_p  = cmd.clone();
-        let state_p = state.clone();
-        let act_p  = ui.last_activity.clone();
+        let cmd_p     = cmd.clone();
+        let state_p   = state.clone();
+        let audio_p   = audio_shared.clone();
+        let act_p     = ui.last_activity.clone();
         app.on_play_paused(move || {
-            let mut c  = cmd_p.lock().unwrap();
-            let st     = state_p.lock().unwrap();
-            c.playing  = !st.playing;
+            let st = state_p.lock().unwrap();
+            let playing = !st.playing;
+            drop(st);
+            cmd_p.lock().unwrap().playing            = playing;
+            audio_p.lock().unwrap().playing          = playing;
             *act_p.borrow_mut() = std::time::Instant::now();
         });
     }
@@ -55,6 +58,7 @@ fn main() {
     // ── Seek (absolute) ───────────────────────────────────────────────────
     {
         let cmd_s   = cmd.clone();
+        let audio_s = audio_shared.clone();
         let state_s = state.clone();
         let cd      = ui.seek_cooldown.clone();
         let act     = ui.last_activity.clone();
@@ -63,7 +67,10 @@ fn main() {
             *act.borrow_mut() = std::time::Instant::now();
             if let Ok(st) = state_s.lock() {
                 if st.duration > 0.0 {
-                    cmd_s.lock().unwrap().seek_target = Some(val as f64 * st.duration);
+                    let target = val as f64 * st.duration;
+                    cmd_s.lock().unwrap().seek_target  = Some(target);
+                    // Bug #4 fix: tell audio decoder to seek too
+                    audio_s.lock().unwrap().seek_to    = Some(target);
                 }
             }
         });
@@ -72,6 +79,7 @@ fn main() {
     // ── Seek relative (±seconds) ───────────────────────────────────────────
     {
         let cmd_r   = cmd.clone();
+        let audio_r = audio_shared.clone();
         let state_r = state.clone();
         let cd      = ui.seek_cooldown.clone();
         let act     = ui.last_activity.clone();
@@ -79,8 +87,10 @@ fn main() {
             *cd.borrow_mut()  = std::time::Instant::now();
             *act.borrow_mut() = std::time::Instant::now();
             if let Ok(st) = state_r.lock() {
-                let new_pos = (st.position + delta as f64).max(0.0).min(st.duration);
-                cmd_r.lock().unwrap().seek_target = Some(new_pos);
+                let target = (st.position + delta as f64).max(0.0).min(st.duration);
+                cmd_r.lock().unwrap().seek_target  = Some(target);
+                // Bug #4 fix: seek audio too
+                audio_r.lock().unwrap().seek_to    = Some(target);
             }
         });
     }
@@ -109,29 +119,28 @@ fn main() {
 
     // ── Volume mute toggle ────────────────────────────────────────────────
     {
-        let v   = vol.clone();
-        let act = ui.last_activity.clone();
-        // Remember the pre-mute level so we can restore it
-        let saved_vol = Rc::new(RefCell::new(0.8f32));
+        let audio_v = audio_shared.clone();
+        let act     = ui.last_activity.clone();
+        let saved   = Rc::new(RefCell::new(0.8f32));
         app.on_volume_toggled(move || {
             *act.borrow_mut() = std::time::Instant::now();
-            let mut vv = v.lock().unwrap();
-            if *vv > 0.0 {
-                *saved_vol.borrow_mut() = *vv;
-                *vv = 0.0;
+            let mut s = audio_v.lock().unwrap();
+            if s.volume > 0.0 {
+                *saved.borrow_mut() = s.volume;
+                s.volume = 0.0;
             } else {
-                *vv = *saved_vol.borrow();
+                s.volume = *saved.borrow();
             }
         });
     }
 
     // ── Volume slider ─────────────────────────────────────────────────────
     {
-        let v   = vol.clone();
-        let act = ui.last_activity.clone();
+        let audio_v = audio_shared.clone();
+        let act     = ui.last_activity.clone();
         app.on_volume_changed(move |new_vol| {
             *act.borrow_mut() = std::time::Instant::now();
-            *v.lock().unwrap() = new_vol;
+            audio_v.lock().unwrap().volume = new_vol;
         });
     }
 
@@ -209,8 +218,7 @@ fn main() {
             a.set_playing(playing);
             a.set_position(pos as f32);
             a.set_duration(dur as f32);
-            // Sync UI volume slider with the actual volume level
-            a.set_volume_level(*vol.lock().unwrap());
+            a.set_volume_level(audio_shared.lock().unwrap().volume);
         },
     );
 
