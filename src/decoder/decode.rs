@@ -266,19 +266,26 @@ pub(crate) fn decode_video(
                 if pts_elapsed < 0.0 {
                     // PTS went backwards or wrapped, reset anchor to resync
                     wall_start = None;
+                    pause_elapsed = 0.0;
+                    pause_since = None;
                 } else {
                     // Speed factor from command (read fresh for accuracy)
                     let spd = command.lock().unwrap().speed as f64;
                     let adjusted_pts = if spd > 0.0 { pts_elapsed / spd } else { pts_elapsed };
 
                     if adjusted_pts > real_elapsed {
-                        let sleep_ms = ((adjusted_pts - real_elapsed) * 1000.0) as u64;
-                        if sleep_ms > 1000 {
-                            // Massive gap in timestamps (>1s), reset anchor instead of 
-                            // dropping the sleep which causes permanent fast-forward desync.
-                            wall_start = None;
-                        } else {
-                            std::thread::sleep(std::time::Duration::from_millis(sleep_ms));
+                        let mut sleep_ms = ((adjusted_pts - real_elapsed) * 1000.0) as i64;
+                        // Sleep in chunks so the thread remains responsive during long frame holds
+                        while sleep_ms > 0 {
+                            let chunk = if sleep_ms > 20 { 20 } else { sleep_ms };
+                            std::thread::sleep(std::time::Duration::from_millis(chunk as u64));
+                            sleep_ms -= chunk;
+                            
+                            // Wake up early if user interacts
+                            let c = command.lock().unwrap();
+                            if c.quit || c.load_file.is_some() || c.seek_target.is_some() {
+                                break;
+                            }
                         }
                     }
                 }
