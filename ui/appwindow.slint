@@ -24,6 +24,7 @@ export component AppWindow inherits Window {
     in-out property <bool>   is-fullscreen;
     in-out property <float>  speed: 1.0;
     in property <string>     debug-text;
+    in-out property <int>    scale-mode: 0;
 
     forward-focus: my_kb;
 
@@ -57,6 +58,7 @@ export component AppWindow inherits Window {
 
             VideoLayer {
                 frame <=> root.frame;
+                scale-mode: root.scale-mode;
             }
 
             // ── Click / hover detection area ─────────────────────────────
@@ -155,6 +157,7 @@ export component AppWindow inherits Window {
                 TopMenu {
                     x: 12px;
                     y: 8px;
+                    scale-mode <=> root.scale-mode;
                     controls-opacity: root.controls-opacity;
                     open-file => { root.open-file(); }
                     open-recent => { root.open-recent(); }

@@ -3,6 +3,7 @@ export component TopMenu {
     callback open-file;
     callback open-recent;
     callback controls-moved;
+    in-out property <int> scale-mode: 0; // 0=contain, 1=fill, 2=cover
 
     property <bool> menu-open: false;
 
@@ -44,8 +45,8 @@ export component TopMenu {
     if menu-open: Rectangle {
         x: 0px;
         y: 40px;
-        width: 140px;
-        height: 80px;
+        width: 160px;
+        height: 115px;
         background: rgba(20, 20, 28, 0.95);
         border-radius: 6px;
         border-color: rgba(255, 255, 255, 0.1);
@@ -95,6 +96,27 @@ export component TopMenu {
                     clicked => {
                         root.menu-open = false;
                         root.open-recent();
+                    }
+                }
+            }
+
+            Rectangle {
+                height: 32px;
+                border-radius: 4px;
+                background: item3-ta.has_hover ? rgba(255, 255, 255, 0.1) : transparent;
+                animate background { duration: 100ms; }
+                
+                Text {
+                    text: root.scale-mode == 0 ? "🔲 Scale: Fit" : (root.scale-mode == 1 ? "↔️ Scale: Stretch" : "🔍 Scale: Zoom");
+                    color: rgba(255, 255, 255, 0.9);
+                    font-size: 13px;
+                    vertical-alignment: center;
+                    x: 10px;
+                }
+                item3-ta := TouchArea {
+                    clicked => {
+                        root.scale-mode = root.scale-mode == 0 ? 1 : (root.scale-mode == 1 ? 2 : 0);
+                        root.controls-moved();
                     }
                 }
             }

@@ -1,12 +1,13 @@
 export component VideoLayer {
     in property <image> frame;
+    in property <int> scale-mode: 0;
     width: 100%; height: 100%;
 
     // Video frame
     Image {
         source: root.frame;
         width: 100%; height: 100%;
-        image-fit: contain;
+        image-fit: root.scale-mode == 0 ? ImageFit.contain : (root.scale-mode == 1 ? ImageFit.fill : ImageFit.cover);
     }
 
     // Dark vignette at bottom (behind controls)
