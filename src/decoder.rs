@@ -12,11 +12,12 @@ pub struct DecoderCommand {
     pub seek_target: Option<f64>,
     pub playing: bool,
     pub quit: bool,
+    pub speed: f32,
 }
 
 impl Default for DecoderCommand {
     fn default() -> Self {
-        Self { seek_target: None, playing: true, quit: false }
+        Self { seek_target: None, playing: true, quit: false, speed: 1.0 }
     }
 }
 

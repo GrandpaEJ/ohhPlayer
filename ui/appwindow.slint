@@ -6,30 +6,29 @@ export component AppWindow inherits Window {
     title: "ohhPlayer";
     preferred-width: 900px;
     preferred-height: 520px;
-    background: #0a0a12;
+    background: #080810;
 
-    in-out property <image> frame;
-    in-out property <float> position;
-    in-out property <float> duration;
-    in-out property <bool> playing;
+    in-out property <image>  frame;
+    in-out property <float>  position;
+    in-out property <float>  duration;
+    in-out property <bool>   playing;
     in-out property <string> time-text: "00:00 / 00:00";
-    in-out property <float> slider-value;
-    in-out property <bool> block-slider-update;
-    in-out property <float> controls-opacity: 1;
-    in-out property <float> center-btn-opacity: 1;
-    in-out property <float> volume-level: 0.8;
-    in-out property <bool> is-fullscreen;
-    in-out property <bool> is-maximized;
+    in-out property <float>  slider-value;
+    in-out property <bool>   block-slider-update;
+    in-out property <float>  controls-opacity: 1;
+    in-out property <float>  center-btn-opacity: 1;
+    in-out property <float>  volume-level: 0.8;
+    in-out property <bool>   is-fullscreen;
+    in-out property <float>  speed: 1.0;
 
     callback play-paused();
     callback seeked(float);
-    callback fullscreen-toggled();
     callback seek-relative(float);
+    callback fullscreen-toggled();
     callback controls-moved();
     callback volume-toggled();
-    callback close-window();
-    callback minimize-window();
-    callback maximize-window();
+    callback volume-changed(float);
+    callback speed-changed(float);
 
     VerticalBox {
         padding: 0px;
@@ -41,85 +40,82 @@ export component AppWindow inherits Window {
 
             FocusScope {
                 key-pressed(event) => {
-                    if event.text == " " { root.play-paused(); return accept; }
+                    if event.text == " "  { root.play-paused(); return accept; }
                     if event.text == "f" || event.text == "F" { root.fullscreen-toggled(); return accept; }
-                    if event.text == "Escape" { root.close-window(); return accept; }
-                    if event.text == "q" || event.text == "\u{11}" || (event.text == "" && event.modifiers.control) { root.close-window(); return accept; }
-                    if event.text == "m" || event.text == "M" { root.minimize-window(); return accept; }
-                    if event.text == "x" || event.text == "X" { root.maximize-window(); return accept; }
-                    if event.text == "j" { root.seek-relative(-10); return accept; }
-                    if event.text == "l" { root.seek-relative(10); return accept; }
-                    if event.text == "," { root.seek-relative(-5); return accept; }
-                    if event.text == "." { root.seek-relative(5); return accept; }
+                    if event.text == "Escape" || event.text == "q" || event.text == "Q" { root.play-paused(); return reject; }
+                    if event.text == "j"  { root.seek-relative(-10); return accept; }
+                    if event.text == "l"  { root.seek-relative(10);  return accept; }
+                    if event.text == ","  { root.seek-relative(-5);  return accept; }
+                    if event.text == "."  { root.seek-relative(5);   return accept; }
                     return reject;
                 }
             }
 
+            // Video frame
+            Image {
+                source: root.frame;
+                width: 100%; height: 100%;
+                image-fit: contain;
+            }
+
+            // Dark vignette overlay at bottom (behind controls)
             Rectangle {
-                width: 100%;
-                height: 100%;
+                x: 0; y: parent.height - 120px;
+                width: 100%; height: 120px;
+                background: @linear-gradient(0deg, rgba(0,0,0,0.65) 0%, transparent 100%);
+            }
 
-                Image {
-                    source: root.frame;
+            // Click area (activity tracking + center play button)
+            Rectangle {
+                x: 0; y: 0; width: 100%; height: 100%;
+
+                TouchArea {
+                    moved => { root.controls-moved(); }
+                }
+
+                // Center play/pause button
+                Rectangle {
+                    x: (parent.width - 70px) / 2;
+                    y: (parent.height - 70px) / 2;
+                    width: 70px; height: 70px;
+                    opacity: root.center-btn-opacity;
+
+                    animate opacity { duration: 200ms; easing: ease-out; }
+
+                    CenterPlayButton {
+                        playing: root.playing;
+                        clicked       => { root.play-paused(); }
+                        controls-moved => { root.controls-moved(); }
+                    }
+                }
+
+                // Controls bar (80px, pinned to bottom)
+                Rectangle {
+                    x: 0;
+                    y: parent.height - 80px;
                     width: 100%;
-                    height: 100%;
-                    image-fit: contain;
-                }
+                    height: 80px;
+                    opacity: root.controls-opacity;
 
-                Rectangle {
-                    x: 0px; y: 0px;
-                    width: 100%; height: 100%;
-                    opacity: 0.2;
-                    background: #000;
-                }
+                    animate opacity { duration: 300ms; easing: ease-in-out; }
 
-                Rectangle {
-                    x: 0px; y: 0px;
-                    width: 100%; height: 100%;
+                    Controls {
+                        playing:             root.playing;
+                        time-text:           root.time-text;
+                        slider-value:        root.slider-value;
+                        block-slider-update: root.block-slider-update;
+                        volume-level:        root.volume-level;
+                        is-fullscreen:       root.is-fullscreen;
+                        speed:               root.speed;
 
-                    TouchArea {
-                        moved => { root.controls-moved(); }
-                    }
-
-                    Rectangle {
-                        x: (parent.width - 70px) / 2;
-                        y: (parent.height - 70px) / 2;
-                        width: 70px;
-                        height: 70px;
-                        opacity: root.center-btn-opacity;
-
-                        CenterPlayButton {
-                            playing: root.playing;
-                            clicked => { root.play-paused(); }
-                            controls-moved => { root.controls-moved(); }
-                        }
-                    }
-
-                    Rectangle {
-                        x: 0px;
-                        y: parent.height - 56px;
-                        width: 100%;
-                        height: 56px;
-                        opacity: root.controls-opacity;
-
-                        Controls {
-                            playing: root.playing;
-                            time-text: root.time-text;
-                            slider-value: root.slider-value;
-                            block-slider-update: root.block-slider-update;
-                            volume-level: root.volume-level;
-                            is-fullscreen: root.is-fullscreen;
-                            is-maximized: root.is-maximized;
-
-                            play-paused => { root.play-paused(); }
-                            seeked(val) => { root.seeked(val); }
-                            fullscreen-toggled => { root.fullscreen-toggled(); }
-                            volume-toggled => { root.volume-toggled(); }
-                            close-window => { root.close-window(); }
-                            minimize-window => { root.minimize-window(); }
-                            maximize-window => { root.maximize-window(); }
-                            controls-moved => { root.controls-moved(); }
-                        }
+                        play-paused        => { root.play-paused(); }
+                        seeked(val)        => { root.seeked(val); }
+                        seek-relative(d)   => { root.seek-relative(d); }
+                        fullscreen-toggled => { root.fullscreen-toggled(); }
+                        volume-toggled     => { root.volume-toggled(); }
+                        volume-changed(v)  => { root.volume-changed(v); }
+                        speed-changed(s)   => { root.speed-changed(s); }
+                        controls-moved     => { root.controls-moved(); }
                     }
                 }
             }

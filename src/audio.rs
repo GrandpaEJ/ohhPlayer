@@ -6,6 +6,7 @@ use std::mem;
 
 pub struct AudioOutput {
     pub buffer: Arc<Mutex<VecDeque<f32>>>,
+    pub volume: Arc<Mutex<f32>>,
     sample_rate: i32,
     channels: i32,
     _sdl: Option<sdl2::Sdl>,
@@ -16,6 +17,7 @@ impl AudioOutput {
     pub fn new() -> Self {
         Self {
             buffer: Arc::new(Mutex::new(VecDeque::new())),
+            volume: Arc::new(Mutex::new(0.8f32)),
             sample_rate: 44100,
             channels: 2,
             _sdl: None,
@@ -42,8 +44,9 @@ impl AudioOutput {
         };
 
         let buf = self.buffer.clone();
+        let vol = self.volume.clone();
         let device = audio.open_playback(None, &desired, move |_| {
-            AudioCallback { buffer: buf.clone() }
+            AudioCallback { buffer: buf.clone(), volume: vol.clone() }
         })?;
 
         device.resume();
@@ -55,14 +58,16 @@ impl AudioOutput {
 
 pub struct AudioCallback {
     buffer: Arc<Mutex<VecDeque<f32>>>,
+    volume: Arc<Mutex<f32>>,
 }
 
 impl sdl2::audio::AudioCallback for AudioCallback {
     type Channel = f32;
     fn callback(&mut self, out: &mut [f32]) {
+        let vol = *self.volume.lock().unwrap();
         let mut buf = self.buffer.lock().unwrap();
         for sample in out.iter_mut() {
-            *sample = buf.pop_front().unwrap_or(0.0);
+            *sample = buf.pop_front().unwrap_or(0.0) * vol;
         }
     }
 }
@@ -189,6 +194,7 @@ fn decode_audio(path: &str, out_buffer: Arc<Mutex<VecDeque<f32>>>) {
                     let total = (converted * 2) as usize;
                     let samples = std::slice::from_raw_parts(dst_buf as *const f32, total);
                     let mut buf = out_buffer.lock().unwrap();
+                    // Buffer up to 10 seconds worth of audio (raw samples, volume applied at playback)
                     if buf.len() < 44100 * 10 {
                         buf.extend(samples.iter());
                     }

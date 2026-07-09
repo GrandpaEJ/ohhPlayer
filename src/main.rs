@@ -6,6 +6,7 @@ slint::include_modules!();
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 extern "C" fn sigint(_: i32) {
     unsafe { libc::_exit(0); }
@@ -30,29 +31,35 @@ fn main() {
     audio_out.start(path);
     let _ = audio_out.init_sdl();
 
-    let cmd = decoder.command();
+    // Shared volume — used by both the SDL callback (applies gain) and the UI
+    let vol: Arc<Mutex<f32>> = audio_out.volume.clone();
+
+    let cmd   = decoder.command();
     let state = decoder.state();
     let frame = decoder.frame();
-    let ui = Rc::new(ui_state::UiState::new());
-    let vol = Rc::new(RefCell::new(0.8f32));
+    let ui    = Rc::new(ui_state::UiState::new());
 
-    let cmd_p = cmd.clone();
-    let state_p = state.clone();
-    let act_p = ui.last_activity.clone();
-    app.on_play_paused(move || {
-        let mut c = cmd_p.lock().unwrap();
-        let st = state_p.lock().unwrap();
-        c.playing = !st.playing;
-        *act_p.borrow_mut() = std::time::Instant::now();
-    });
-
+    // ── Play / Pause ───────────────────────────────────────────────────────
     {
-        let cmd_s = cmd.clone();
+        let cmd_p  = cmd.clone();
+        let state_p = state.clone();
+        let act_p  = ui.last_activity.clone();
+        app.on_play_paused(move || {
+            let mut c  = cmd_p.lock().unwrap();
+            let st     = state_p.lock().unwrap();
+            c.playing  = !st.playing;
+            *act_p.borrow_mut() = std::time::Instant::now();
+        });
+    }
+
+    // ── Seek (absolute) ───────────────────────────────────────────────────
+    {
+        let cmd_s   = cmd.clone();
         let state_s = state.clone();
-        let cd = ui.seek_cooldown.clone();
-        let act = ui.last_activity.clone();
+        let cd      = ui.seek_cooldown.clone();
+        let act     = ui.last_activity.clone();
         app.on_seeked(move |val| {
-            *cd.borrow_mut() = std::time::Instant::now();
+            *cd.borrow_mut()  = std::time::Instant::now();
             *act.borrow_mut() = std::time::Instant::now();
             if let Ok(st) = state_s.lock() {
                 if st.duration > 0.0 {
@@ -62,13 +69,14 @@ fn main() {
         });
     }
 
+    // ── Seek relative (±seconds) ───────────────────────────────────────────
     {
-        let cmd_r = cmd.clone();
+        let cmd_r   = cmd.clone();
         let state_r = state.clone();
-        let cd = ui.seek_cooldown.clone();
-        let act = ui.last_activity.clone();
+        let cd      = ui.seek_cooldown.clone();
+        let act     = ui.last_activity.clone();
         app.on_seek_relative(move |delta| {
-            *cd.borrow_mut() = std::time::Instant::now();
+            *cd.borrow_mut()  = std::time::Instant::now();
             *act.borrow_mut() = std::time::Instant::now();
             if let Ok(st) = state_r.lock() {
                 let new_pos = (st.position + delta as f64).max(0.0).min(st.duration);
@@ -77,6 +85,7 @@ fn main() {
         });
     }
 
+    // ── Controls activity ─────────────────────────────────────────────────
     {
         let act = ui.last_activity.clone();
         app.on_controls_moved(move || {
@@ -84,9 +93,10 @@ fn main() {
         });
     }
 
+    // ── Fullscreen toggle ─────────────────────────────────────────────────
     {
         let weak = app_weak.clone();
-        let act = ui.last_activity.clone();
+        let act  = ui.last_activity.clone();
         app.on_fullscreen_toggled(move || {
             *act.borrow_mut() = std::time::Instant::now();
             if let Some(w) = weak.upgrade() {
@@ -97,44 +107,49 @@ fn main() {
         });
     }
 
+    // ── Volume mute toggle ────────────────────────────────────────────────
     {
+        let v   = vol.clone();
         let act = ui.last_activity.clone();
-        app.on_close_window(move || {
-            *act.borrow_mut() = std::time::Instant::now();
-            unsafe { libc::_exit(0); }
-        });
-    }
-
-    {
-        let weak = app_weak.clone();
-        app.on_minimize_window(move || {
-            if let Some(w) = weak.upgrade() {
-                w.window().set_minimized(true);
-            }
-        });
-    }
-
-    {
-        let weak = app_weak.clone();
-        app.on_maximize_window(move || {
-            if let Some(w) = weak.upgrade() {
-                let mx = !w.window().is_maximized();
-                w.window().set_maximized(mx);
-                w.set_is_maximized(mx);
-            }
-        });
-    }
-
-    {
-        let v = vol.clone();
-        let act = ui.last_activity.clone();
+        // Remember the pre-mute level so we can restore it
+        let saved_vol = Rc::new(RefCell::new(0.8f32));
         app.on_volume_toggled(move || {
             *act.borrow_mut() = std::time::Instant::now();
-            let mut vv = v.borrow_mut();
-            *vv = if *vv > 0.0 { 0.0 } else { 0.8 };
+            let mut vv = v.lock().unwrap();
+            if *vv > 0.0 {
+                *saved_vol.borrow_mut() = *vv;
+                *vv = 0.0;
+            } else {
+                *vv = *saved_vol.borrow();
+            }
         });
     }
 
+    // ── Volume slider ─────────────────────────────────────────────────────
+    {
+        let v   = vol.clone();
+        let act = ui.last_activity.clone();
+        app.on_volume_changed(move |new_vol| {
+            *act.borrow_mut() = std::time::Instant::now();
+            *v.lock().unwrap() = new_vol;
+        });
+    }
+
+    // ── Playback speed ────────────────────────────────────────────────────
+    {
+        let cmd_spd = cmd.clone();
+        let weak    = app_weak.clone();
+        let act     = ui.last_activity.clone();
+        app.on_speed_changed(move |spd| {
+            *act.borrow_mut() = std::time::Instant::now();
+            cmd_spd.lock().unwrap().speed = spd;
+            if let Some(w) = weak.upgrade() {
+                w.set_speed(spd);
+            }
+        });
+    }
+
+    // ── UI refresh timer (16 ms ≈ 60 fps) ────────────────────────────────
     let timer = slint::Timer::default();
     timer.start(
         slint::TimerMode::Repeated,
@@ -142,7 +157,7 @@ fn main() {
         move || {
             let a = match app_weak.upgrade() {
                 Some(a) => a,
-                None => return,
+                None    => return,
             };
 
             if let Some(f) = frame.lock().unwrap().take() {
@@ -164,7 +179,7 @@ fn main() {
             a.set_time_text(slint::SharedString::from(ui_state::format_time(pos, dur)));
 
             let idle = ui.last_activity.borrow().elapsed().as_secs_f32();
-            let op = ui_state::compute_opacity(
+            let op   = ui_state::compute_opacity(
                 playing,
                 idle,
                 *ui.controls_opacity.borrow(),
@@ -194,7 +209,8 @@ fn main() {
             a.set_playing(playing);
             a.set_position(pos as f32);
             a.set_duration(dur as f32);
-            a.set_volume_level(*vol.borrow());
+            // Sync UI volume slider with the actual volume level
+            a.set_volume_level(*vol.lock().unwrap());
         },
     );
 
