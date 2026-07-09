@@ -107,15 +107,20 @@ export component TopMenu {
                 animate background { duration: 100ms; }
                 
                 Text {
-                    text: root.scale-mode == 0 ? "🔲 Scale: Fit" : (root.scale-mode == 1 ? "↔️ Scale: Stretch" : (root.scale-mode == 2 ? "🔍 Scale: Zoom" : "1:1 Scale: 100%"));
+                    text: root.scale-mode == 0 ? "🔲 Scale: Fit" :
+                          root.scale-mode == 1 ? "↔️ Scale: Stretch" :
+                          root.scale-mode == 2 ? "🔍 Scale: Zoom" :
+                          root.scale-mode == 3 ? "100% Original Size" :
+                          root.scale-mode == 4 ? "1:1 Forced Ratio" :
+                          root.scale-mode == 5 ? "16:9 Widescreen" : "9:16 Portrait";
                     color: rgba(255, 255, 255, 0.9);
-                    font-size: 13px;
+                    font-size: 11px;
                     vertical-alignment: center;
                     x: 10px;
                 }
                 item3-ta := TouchArea {
                     clicked => {
-                        root.scale-mode = root.scale-mode == 0 ? 1 : (root.scale-mode == 1 ? 2 : (root.scale-mode == 2 ? 3 : 0));
+                        root.scale-mode = root.scale-mode == 6 ? 0 : root.scale-mode + 1;
                         root.controls-moved();
                     }
                 }

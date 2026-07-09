@@ -256,9 +256,14 @@ export component Controls {
                     animate background { duration: 120ms; }
 
                     Text {
-                        text: root.scale-mode == 0 ? "🔲" : (root.scale-mode == 1 ? "↔️" : (root.scale-mode == 2 ? "🔍" : "1:1"));
+                        text: root.scale-mode == 0 ? "🔲" :
+                              root.scale-mode == 1 ? "↔️" :
+                              root.scale-mode == 2 ? "🔍" :
+                              root.scale-mode == 3 ? "100%" :
+                              root.scale-mode == 4 ? "1:1" :
+                              root.scale-mode == 5 ? "16:9" : "9:16";
                         color: rgba(255,255,255,0.75);
-                        font-size: root.scale-mode == 3 ? 10px : 14px;
+                        font-size: root.scale-mode >= 3 ? 10px : 14px;
                         font-weight: 600;
                         x: (parent.width - self.preferred-width) / 2;
                         y: (parent.height - self.preferred-height) / 2;
@@ -266,7 +271,7 @@ export component Controls {
                     scale-ta := TouchArea {
                         pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
                         clicked => {
-                            root.scale-mode = root.scale-mode == 0 ? 1 : (root.scale-mode == 1 ? 2 : (root.scale-mode == 2 ? 3 : 0));
+                            root.scale-mode = root.scale-mode == 6 ? 0 : root.scale-mode + 1;
                             root.controls-moved();
                         }
                     }
