@@ -33,6 +33,7 @@ export component RecentFilesOverlay inherits Rectangle {
         VerticalLayout {
             padding: 16px;
             spacing: 12px;
+            alignment: start;
 
             HorizontalLayout {
                 Text {
@@ -62,8 +63,10 @@ export component RecentFilesOverlay inherits Rectangle {
             }
 
             Flickable {
+                vertical-stretch: 1;
                 VerticalLayout {
                     spacing: 4px;
+                    alignment: start;
                     for file in root.files: Rectangle {
                         height: 36px;
                         border-radius: 4px;

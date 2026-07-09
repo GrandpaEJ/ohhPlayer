@@ -61,11 +61,12 @@ fn main() {
     let mut audio_out = audio::AudioOutput::new();
     let _ = audio_out.init_sdl();
 
-    if let Some(p) = path {
-        save_to_history(&p);
-        decoder.start(&p, 800, 424);
-        audio_out.start(&p);
+    let start_path = path.unwrap_or_else(|| "".to_string());
+    if !start_path.is_empty() {
+        save_to_history(&start_path);
     }
+    decoder.start(&start_path, 800, 424);
+    audio_out.start(&start_path);
 
     app.set_recent_files(get_history_model());
 
