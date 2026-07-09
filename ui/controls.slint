@@ -19,16 +19,13 @@ export component Controls {
     callback speed-changed(float);
     callback controls-moved;
 
-    property <bool>  speed-open: false;
-    property <bool>  vol-hovered: false;
-    property <float> seek-hover-x: 0;
+    property <bool> speed-open: false;
 
     width: 100%;
     height: 100%;
 
     Rectangle {
         width: 100%; height: 100%;
-        // Subtle gradient from transparent → dark
         background: @linear-gradient(0deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.55) 70%, transparent 100%);
 
         VerticalLayout {
@@ -43,26 +40,40 @@ export component Controls {
             Rectangle {
                 height: 18px;
 
+                seek-ta := TouchArea {
+                    pointer-event(evt) => {
+                        root.controls-moved();
+                        if evt.kind == PointerEventKind.move && self.pressed {
+                            let v = max(0, min(1, self.mouse-x / parent.width));
+                            if !root.block-slider-update { root.seeked(v); }
+                        }
+                    }
+                    clicked => {
+                        root.controls-moved();
+                        root.seeked(max(0, min(1, self.mouse-x / parent.width)));
+                    }
+                }
+
                 // Track background
                 Rectangle {
                     y: (parent.height - 4px) / 2;
-                    height: 4px;
+                    height: seek-ta.has_hover ? 6px : 4px;
                     width: 100%;
-                    border-radius: 2px;
+                    border-radius: 3px;
                     background: rgba(255,255,255,0.18);
+                    animate height { duration: 120ms; easing: ease-out; }
                 }
-
                 // Filled portion
                 Rectangle {
-                    y: (parent.height - 4px) / 2;
+                    y: (parent.height - (seek-ta.has_hover ? 6px : 4px)) / 2;
                     x: 0;
-                    height: 4px;
+                    height: seek-ta.has_hover ? 6px : 4px;
                     width: parent.width * root.slider-value;
-                    border-radius: 2px;
+                    border-radius: 3px;
                     background: @linear-gradient(90deg, #5ba4f5, #a78bfa);
+                    animate height { duration: 120ms; easing: ease-out; }
                 }
-
-                // Thumb handle
+                // Thumb — only visible on hover
                 Rectangle {
                     x: parent.width * root.slider-value - 7px;
                     y: (parent.height - 14px) / 2;
@@ -70,24 +81,10 @@ export component Controls {
                     height: 14px;
                     border-radius: 7px;
                     background: #fff;
+                    opacity: seek-ta.has_hover ? 1.0 : 0.0;
                     drop-shadow-blur: 4px;
                     drop-shadow-color: rgba(90,160,255,0.6);
-                }
-
-                // Touch area over entire seek row
-                TouchArea {
-                    moved => {
-                        root.controls-moved();
-                        if self.pressed {
-                            let v = max(0, min(1, self.mouse-x / parent.width));
-                            if !root.block-slider-update { root.seeked(v); }
-                        }
-                    }
-                    clicked => {
-                        root.controls-moved();
-                        let v = max(0, min(1, self.mouse-x / parent.width));
-                        root.seeked(v);
-                    }
+                    animate opacity { duration: 150ms; }
                 }
             }
 
@@ -103,9 +100,8 @@ export component Controls {
                 Rectangle {
                     width: 36px; height: 36px;
                     border-radius: 6px;
-                    background: rgba(255,255,255,0.0);
-
-                    animate background { duration: 150ms; }
+                    background: play-ta.has_hover ? rgba(255,255,255,0.14) : rgba(255,255,255,0.0);
+                    animate background { duration: 120ms; }
 
                     Text {
                         text: root.playing ? "⏸" : "▶";
@@ -114,9 +110,9 @@ export component Controls {
                         x: (parent.width - self.preferred-width) / 2;
                         y: (parent.height - self.preferred-height) / 2;
                     }
-                    TouchArea {
-                        moved    => { root.controls-moved(); }
-                        clicked  => { root.play-paused(); }
+                    play-ta := TouchArea {
+                        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+                        clicked => { root.play-paused(); }
                     }
                 }
 
@@ -124,7 +120,8 @@ export component Controls {
                 Rectangle {
                     width: 34px; height: 36px;
                     border-radius: 6px;
-                    background: rgba(255,255,255,0.0);
+                    background: skip-back-ta.has_hover ? rgba(255,255,255,0.14) : rgba(255,255,255,0.0);
+                    animate background { duration: 120ms; }
 
                     Text {
                         text: "↺";
@@ -133,7 +130,6 @@ export component Controls {
                         x: (parent.width - self.preferred-width) / 2;
                         y: (parent.height - self.preferred-height) / 2;
                     }
-                    // small "10" label
                     Text {
                         text: "10";
                         color: rgba(255,255,255,0.75);
@@ -141,9 +137,9 @@ export component Controls {
                         x: (parent.width - self.preferred-width) / 2 + 1px;
                         y: (parent.height - self.preferred-height) / 2 + 4px;
                     }
-                    TouchArea {
-                        moved    => { root.controls-moved(); }
-                        clicked  => { root.seek-relative(-10); root.controls-moved(); }
+                    skip-back-ta := TouchArea {
+                        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+                        clicked => { root.seek-relative(-10); root.controls-moved(); }
                     }
                 }
 
@@ -151,7 +147,8 @@ export component Controls {
                 Rectangle {
                     width: 34px; height: 36px;
                     border-radius: 6px;
-                    background: rgba(255,255,255,0.0);
+                    background: skip-fwd-ta.has_hover ? rgba(255,255,255,0.14) : rgba(255,255,255,0.0);
+                    animate background { duration: 120ms; }
 
                     Text {
                         text: "↻";
@@ -167,15 +164,18 @@ export component Controls {
                         x: (parent.width - self.preferred-width) / 2 + 1px;
                         y: (parent.height - self.preferred-height) / 2 + 4px;
                     }
-                    TouchArea {
-                        moved    => { root.controls-moved(); }
-                        clicked  => { root.seek-relative(10); root.controls-moved(); }
+                    skip-fwd-ta := TouchArea {
+                        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+                        clicked => { root.seek-relative(10); root.controls-moved(); }
                     }
                 }
 
                 // Volume icon (mute toggle)
                 Rectangle {
                     width: 30px; height: 36px;
+                    border-radius: 6px;
+                    background: vol-icon-ta.has_hover ? rgba(255,255,255,0.14) : rgba(255,255,255,0.0);
+                    animate background { duration: 120ms; }
 
                     Text {
                         text: root.volume-level > 0.5 ? "🔊"
@@ -186,9 +186,9 @@ export component Controls {
                         x: (parent.width - self.preferred-width) / 2;
                         y: (parent.height - self.preferred-height) / 2;
                     }
-                    TouchArea {
-                        moved    => { root.controls-moved(); }
-                        clicked  => { root.volume-toggled(); }
+                    vol-icon-ta := TouchArea {
+                        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+                        clicked => { root.volume-toggled(); }
                     }
                 }
 
@@ -196,6 +196,17 @@ export component Controls {
                 Rectangle {
                     width: 72px; height: 36px;
 
+                    vol-ta := TouchArea {
+                        pointer-event(evt) => {
+                            root.controls-moved();
+                            if evt.kind == PointerEventKind.move && self.pressed {
+                                root.volume-changed(max(0, min(1, self.mouse-x / parent.width)));
+                            }
+                        }
+                        clicked => {
+                            root.volume-changed(max(0, min(1, self.mouse-x / parent.width)));
+                        }
+                    }
                     // Track
                     Rectangle {
                         y: (parent.height - 3px) / 2;
@@ -209,7 +220,8 @@ export component Controls {
                         height: 3px;
                         width: parent.width * root.volume-level;
                         border-radius: 2px;
-                        background: rgba(255,255,255,0.7);
+                        background: vol-ta.has_hover ? rgba(255,255,255,0.9) : rgba(255,255,255,0.7);
+                        animate background { duration: 120ms; }
                     }
                     // Thumb
                     Rectangle {
@@ -218,17 +230,8 @@ export component Controls {
                         width: 12px; height: 12px;
                         border-radius: 6px;
                         background: #fff;
-                    }
-                    TouchArea {
-                        moved => {
-                            root.controls-moved();
-                            if self.pressed {
-                                root.volume-changed(max(0, min(1, self.mouse-x / parent.width)));
-                            }
-                        }
-                        clicked => {
-                            root.volume-changed(max(0, min(1, self.mouse-x / parent.width)));
-                        }
+                        opacity: vol-ta.has_hover ? 1.0 : 0.0;
+                        animate opacity { duration: 120ms; }
                     }
                 }
 
@@ -253,12 +256,13 @@ export component Controls {
                     border-radius: 5px;
                     background: speed-open
                         ? rgba(90,160,255,0.22)
-                        : rgba(255,255,255,0.08);
+                        : spd-ta.has_hover
+                            ? rgba(255,255,255,0.14)
+                            : rgba(255,255,255,0.08);
                     border-color: speed-open
                         ? rgba(90,160,255,0.5)
                         : rgba(255,255,255,0.12);
                     border-width: 1px;
-
                     animate background { duration: 120ms; }
 
                     Text {
@@ -275,9 +279,9 @@ export component Controls {
                         x: (parent.width - self.preferred-width) / 2;
                         y: (parent.height - self.preferred-height) / 2;
                     }
-                    TouchArea {
-                        moved    => { root.controls-moved(); }
-                        clicked  => { root.speed-open = !root.speed-open; root.controls-moved(); }
+                    spd-ta := TouchArea {
+                        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+                        clicked => { root.speed-open = !root.speed-open; root.controls-moved(); }
                     }
                 }
 
@@ -285,6 +289,8 @@ export component Controls {
                 Rectangle {
                     width: 34px; height: 36px;
                     border-radius: 6px;
+                    background: fs-ta.has_hover ? rgba(255,255,255,0.14) : rgba(255,255,255,0.0);
+                    animate background { duration: 120ms; }
 
                     Text {
                         text: root.is-fullscreen ? "⊠" : "⛶";
@@ -293,9 +299,9 @@ export component Controls {
                         x: (parent.width - self.preferred-width) / 2;
                         y: (parent.height - self.preferred-height) / 2;
                     }
-                    TouchArea {
-                        moved    => { root.controls-moved(); }
-                        clicked  => { root.fullscreen-toggled(); }
+                    fs-ta := TouchArea {
+                        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+                        clicked => { root.fullscreen-toggled(); }
                     }
                 }
             }
@@ -324,7 +330,6 @@ export component Controls {
                     background: spd == root.speed
                         ? rgba(90, 160, 255, 0.20)
                         : rgba(255,255,255,0.0);
-
                     animate background { duration: 100ms; }
 
                     Text {
@@ -342,6 +347,7 @@ export component Controls {
                         y: (parent.height - self.preferred-height) / 2;
                     }
                     TouchArea {
+                        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
                         clicked => {
                             root.speed = spd;
                             root.speed-changed(spd);

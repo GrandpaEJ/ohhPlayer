@@ -103,6 +103,15 @@ fn main() {
         });
     }
 
+    // ── Close window (ESC / Q / native X button) ─────────────────────────
+    {
+        let cmd_q = cmd.clone();
+        app.on_close_window(move || {
+            cmd_q.lock().unwrap().quit = true;
+            std::process::exit(0);
+        });
+    }
+
     // ── Fullscreen toggle ─────────────────────────────────────────────────
     {
         let weak = app_weak.clone();

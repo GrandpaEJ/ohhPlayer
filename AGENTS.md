@@ -80,6 +80,9 @@
 8. **Keep `.slint` files in `ui/`.** Never generate Slint code from Rust strings at runtime.
 9. **The `Controls` component owns no mutable state** except `speed-open` (popup visibility). All other state flows down as `in-out property` from `AppWindow`.
 10. **`block-slider-update`** must be set to `true` before programmatically changing `slider-value`, then immediately set back to `false`. Failing to do so triggers a seek feedback loop.
+11. **`pointer-event-transparent` does not exist on `TouchArea`** in Slint 1.x. There is no pass-through overlay primitive — use `enabled: false` (which also disables `has_hover`) or restructure the z-order instead.
+12. **`has_hover` uses an underscore, not a hyphen.** The correct property is `ta.has_hover` not `ta.has-hover`. Hyphen will compile but reference the wrong property.
+13. **`TouchArea.moved` only fires while a mouse button is pressed (drag).** To detect free mouse movement (hover/scrub without clicking), use `pointer-event(evt) => { if evt.kind == PointerEventKind.move { ... } }` instead. Failing to do this means controls will never restore opacity after idle fade when the user just moves their mouse.
 
 ### Decoder Rules
 

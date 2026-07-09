@@ -29,6 +29,7 @@ export component AppWindow inherits Window {
     callback volume-toggled();
     callback volume-changed(float);
     callback speed-changed(float);
+    callback close-window();
 
     VerticalBox {
         padding: 0px;
@@ -40,13 +41,15 @@ export component AppWindow inherits Window {
 
             FocusScope {
                 key-pressed(event) => {
-                    if event.text == " "  { root.play-paused(); return accept; }
-                    if event.text == "f" || event.text == "F" { root.fullscreen-toggled(); return accept; }
-                    if event.text == "Escape" || event.text == "q" || event.text == "Q" { root.play-paused(); return reject; }
-                    if event.text == "j"  { root.seek-relative(-10); return accept; }
-                    if event.text == "l"  { root.seek-relative(10);  return accept; }
-                    if event.text == ","  { root.seek-relative(-5);  return accept; }
-                    if event.text == "."  { root.seek-relative(5);   return accept; }
+                    if event.text == " "                           { root.play-paused();       return accept; }
+                    if event.text == "f" || event.text == "F"     { root.fullscreen-toggled(); return accept; }
+                    // Bug fix: ESC and Q now close the player, not pause it
+                    if event.text == "Escape"
+                    || event.text == "q" || event.text == "Q"     { root.close-window();       return accept; }
+                    if event.text == "j"                          { root.seek-relative(-10);   return accept; }
+                    if event.text == "l"                          { root.seek-relative(10);    return accept; }
+                    if event.text == ","                          { root.seek-relative(-5);    return accept; }
+                    if event.text == "."                          { root.seek-relative(5);     return accept; }
                     return reject;
                 }
             }
@@ -58,19 +61,26 @@ export component AppWindow inherits Window {
                 image-fit: contain;
             }
 
-            // Dark vignette overlay at bottom (behind controls)
+            // Dark vignette at bottom (behind controls)
             Rectangle {
                 x: 0; y: parent.height - 120px;
                 width: 100%; height: 120px;
                 background: @linear-gradient(0deg, rgba(0,0,0,0.65) 0%, transparent 100%);
             }
 
-            // Click area (activity tracking + center play button)
+            // ── Click / hover detection area ─────────────────────────────
+            // Bug fix: TouchArea.moved only fires while the pointer is pressed.
+            // Use pointer-event with PointerEventKind.move to detect FREE mouse
+            // movement (no button held) and reset the controls idle timer.
             Rectangle {
                 x: 0; y: 0; width: 100%; height: 100%;
 
                 TouchArea {
-                    moved => { root.controls-moved(); }
+                    pointer-event(evt) => {
+                        // Fires on move even without any mouse button held
+                        if evt.kind == PointerEventKind.move { root.controls-moved(); }
+                    }
+                    clicked => { root.controls-moved(); }
                 }
 
                 // Center play/pause button
@@ -84,12 +94,12 @@ export component AppWindow inherits Window {
 
                     CenterPlayButton {
                         playing: root.playing;
-                        clicked       => { root.play-paused(); }
+                        clicked        => { root.play-paused(); }
                         controls-moved => { root.controls-moved(); }
                     }
                 }
 
-                // Controls bar (80px, pinned to bottom)
+                // Controls bar pinned to bottom
                 Rectangle {
                     x: 0;
                     y: parent.height - 80px;
