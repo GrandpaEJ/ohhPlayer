@@ -116,6 +116,7 @@ pub(crate) fn decode_video(
         let mut pts_start:     f64 = 0.0;
         let mut pause_elapsed: f64 = 0.0;   // accumulated seconds spent paused
         let mut pause_since:   Option<std::time::Instant> = None;
+        let mut skip_to_pts:   Option<f64> = None;
 
         loop {
             // ── Process commands before every packet ─────────────────────
@@ -125,8 +126,9 @@ pub(crate) fn decode_video(
 
                 // Bug #6 fix: seek is checked every iteration, not only for video pkts
                 if let Some(target) = c.seek_target.take() {
-                    do_seek   = true;
-                    seek_ts   = (target * tb.den as f64 / tb.num as f64) as i64;
+                    do_seek     = true;
+                    seek_ts     = (target * tb.den as f64 / tb.num as f64) as i64;
+                    skip_to_pts = Some(target);
                 }
 
                 let playing = c.playing;
@@ -175,6 +177,14 @@ pub(crate) fn decode_video(
                 } else {
                     continue; // Skip frames without a valid timestamp
                 };
+
+                // Skip frames until we hit the precise seek target
+                if let Some(target) = skip_to_pts {
+                    if frame_pts < target {
+                        continue;
+                    }
+                    skip_to_pts = None;
+                }
 
                 state.lock().unwrap().position = frame_pts;
 

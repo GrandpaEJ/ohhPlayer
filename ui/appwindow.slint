@@ -23,6 +23,8 @@ export component AppWindow inherits Window {
     in-out property <bool>   is-fullscreen;
     in-out property <float>  speed: 1.0;
 
+    forward-focus: my_kb;
+
     callback play-paused();
     callback seeked(float);
     callback seek-relative(float);
@@ -41,7 +43,7 @@ export component AppWindow inherits Window {
             vertical-stretch: 1;
             clip: true;
 
-            WindowKeyboard {
+            my_kb := WindowKeyboard {
                 play-paused        => { root.play-paused(); }
                 fullscreen-toggled => { root.fullscreen-toggled(); }
                 close-window       => { root.close-window(); }

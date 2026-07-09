@@ -85,6 +85,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
 
         let mut pkt   = av_packet_alloc();
         let mut frame = av_frame_alloc();
+        let mut skip_to_pts: Option<f64> = None;
 
         loop {
             // ── Bug #3 fix: pause — back-pressure by waiting ─────────────
@@ -100,6 +101,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
                     let seek_ts = (target * audio_tb.den as f64 / audio_tb.num as f64) as i64;
                     drop(s);
                     av_seek_frame(fmt_ctx, audio_idx, seek_ts, AVSEEK_FLAG_BACKWARD);
+                    skip_to_pts = Some(target);
                     continue;
                 }
 
@@ -129,6 +131,20 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
             av_packet_unref(pkt);
 
             while avcodec_receive_frame(codec_ctx, frame) >= 0 {
+                let frame_pts = if (*frame).pts != i64::MIN && (*frame).pts != i64::MAX {
+                    (*frame).pts as f64 * audio_tb.num as f64 / audio_tb.den as f64
+                } else {
+                    -1.0
+                };
+
+                // Skip frames until we hit the precise seek target
+                if let Some(target) = skip_to_pts {
+                    if frame_pts >= 0.0 && frame_pts < target {
+                        continue;
+                    }
+                    skip_to_pts = None;
+                }
+
                 let nb_samples  = (*frame).nb_samples;
                 let delay       = swr_get_delay(swr, src_rate as i64);
                 let dst_nb      = av_rescale_rnd(

@@ -1,12 +1,11 @@
-export component WindowKeyboard {
+export component WindowKeyboard inherits FocusScope {
     callback play-paused;
     callback fullscreen-toggled;
     callback close-window;
     callback seek-relative(float);
     callback controls-moved;
 
-    FocusScope {
-        key-pressed(event) => {
+    key-pressed(event) => {
             if event.text == " "                           { root.play-paused();       return accept; }
             if event.text == "f" || event.text == "F"     { root.fullscreen-toggled(); return accept; }
             // Bug fix: ESC and Q now close the player, not pause it
@@ -18,5 +17,4 @@ export component WindowKeyboard {
             if event.text == "."                          { root.seek-relative(5);     return accept; }
             return reject;
         }
-    }
 }
