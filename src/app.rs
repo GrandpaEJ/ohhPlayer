@@ -16,7 +16,7 @@ pub fn setup_callbacks(
     frame: Arc<Mutex<Option<DecodedFrame>>>,
     audio_shared: Arc<Mutex<AudioShared>>,
     ui: Rc<ui_state::UiState>,
-) {
+) -> slint::Timer {
     // ── Play / Pause ───────────────────────────────────────────────────────
     {
         let cmd_p     = cmd.clone();
@@ -208,4 +208,6 @@ pub fn setup_callbacks(
             a.set_volume_level(audio_shared.lock().unwrap().volume);
         },
     );
+
+    timer
 }

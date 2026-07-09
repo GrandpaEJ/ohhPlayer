@@ -38,7 +38,7 @@ fn main() {
     let frame = decoder.frame();
     let ui    = Rc::new(ui_state::UiState::new());
 
-    app::setup_callbacks(&app, app_weak, cmd, state, frame, audio_shared, ui);
+    let _timer = app::setup_callbacks(&app, app_weak, cmd, state, frame, audio_shared, ui);
 
     app.run().unwrap();
     decoder.command().lock().unwrap().quit = true;
