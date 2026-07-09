@@ -41,6 +41,7 @@ export component AppWindow inherits Window {
                     if event.text == " " { root.play-paused(); return accept; }
                     if event.text == "f" || event.text == "F" { root.fullscreen-toggled(); return accept; }
                     if event.text == "Escape" { root.close-window(); return accept; }
+                    if event.text == "q" && event.modifiers.control { root.close-window(); return accept; }
                     if event.text == "j" { root.seek-relative(-10); return accept; }
                     if event.text == "l" { root.seek-relative(10); return accept; }
                     if event.text == "," { root.seek-relative(-5); return accept; }
