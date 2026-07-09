@@ -107,7 +107,7 @@ export component TopMenu {
                 animate background { duration: 100ms; }
                 
                 Text {
-                    text: root.scale-mode == 0 ? "🔲 Scale: Fit" : (root.scale-mode == 1 ? "↔️ Scale: Stretch" : "🔍 Scale: Zoom");
+                    text: root.scale-mode == 0 ? "🔲 Scale: Fit" : (root.scale-mode == 1 ? "↔️ Scale: Stretch" : (root.scale-mode == 2 ? "🔍 Scale: Zoom" : "1:1 Scale: 100%"));
                     color: rgba(255, 255, 255, 0.9);
                     font-size: 13px;
                     vertical-alignment: center;
@@ -115,7 +115,7 @@ export component TopMenu {
                 }
                 item3-ta := TouchArea {
                     clicked => {
-                        root.scale-mode = root.scale-mode == 0 ? 1 : (root.scale-mode == 1 ? 2 : 0);
+                        root.scale-mode = root.scale-mode == 0 ? 1 : (root.scale-mode == 1 ? 2 : (root.scale-mode == 2 ? 3 : 0));
                         root.controls-moved();
                     }
                 }

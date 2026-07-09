@@ -6,8 +6,8 @@ use super::{DecodedFrame, DecoderCommand, DecoderState};
 
 pub(crate) fn decode_video(
     path: &str,
-    target_w: u32,
-    target_h: u32,
+    _target_w: u32,
+    _target_h: u32,
     command:   Arc<Mutex<DecoderCommand>>,
     state:     Arc<Mutex<DecoderState>>,
     frame_out: Arc<Mutex<Option<DecodedFrame>>>,
@@ -72,12 +72,15 @@ pub(crate) fn decode_video(
             return;
         }
 
+        let native_w = (*codec_ctx).width as u32;
+        let native_h = (*codec_ctx).height as u32;
+
         let sws_ctx = sws_getContext(
             (*codec_ctx).width,
             (*codec_ctx).height,
             (*codec_ctx).pix_fmt,
-            target_w as i32,
-            target_h as i32,
+            native_w as i32,
+            native_h as i32,
             AVPixelFormat::AV_PIX_FMT_RGB24,
             2,
             ptr::null_mut(),
@@ -91,7 +94,7 @@ pub(crate) fn decode_video(
             return;
         }
 
-        let rgb_size = av_image_get_buffer_size(AVPixelFormat::AV_PIX_FMT_RGB24, target_w as i32, target_h as i32, 1);
+        let rgb_size = av_image_get_buffer_size(AVPixelFormat::AV_PIX_FMT_RGB24, native_w as i32, native_h as i32, 1);
         let rgb_buf  = av_malloc(rgb_size as usize) as *mut u8;
         let mut rgb_frame = av_frame_alloc();
         av_image_fill_arrays(
@@ -99,8 +102,8 @@ pub(crate) fn decode_video(
             (*rgb_frame).linesize.as_mut_ptr(),
             rgb_buf,
             AVPixelFormat::AV_PIX_FMT_RGB24,
-            target_w as i32,
-            target_h as i32,
+            native_w as i32,
+            native_h as i32,
             1,
         );
 
@@ -226,9 +229,9 @@ pub(crate) fn decode_video(
                     (*rgb_frame).linesize.as_mut_ptr(),
                 );
 
-                let row_bytes = target_w as usize * 3;
-                let mut buf   = vec![0u8; (target_h as usize) * row_bytes];
-                for y in 0..target_h as usize {
+                let row_bytes = native_w as usize * 3;
+                let mut buf   = vec![0u8; (native_h as usize) * row_bytes];
+                for y in 0..native_h as usize {
                     let src = (*rgb_frame).data[0].offset((y * (*rgb_frame).linesize[0] as usize) as isize);
                     let dst = &mut buf[y * row_bytes..(y + 1) * row_bytes];
                     dst.copy_from_slice(std::slice::from_raw_parts(src, row_bytes));
@@ -236,8 +239,8 @@ pub(crate) fn decode_video(
 
                 *frame_out.lock().unwrap() = Some(DecodedFrame {
                     data:   buf,
-                    width:  target_w,
-                    height: target_h,
+                    width:  native_w,
+                    height: native_h,
                 });
             }
         }
