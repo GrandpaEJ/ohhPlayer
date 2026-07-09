@@ -1,0 +1,55 @@
+export component SpeedPopup {
+    in property <float> speed;
+    in property <bool> speed-open;
+    callback speed-changed(float);
+    callback controls-moved;
+
+    if speed-open : Rectangle {
+        x: parent.width - 110px;
+        y: -168px;
+        width: 110px;
+        height: 162px;
+        background: rgba(14, 14, 26, 0.96);
+        border-radius: 8px;
+        border-color: rgba(255, 255, 255, 0.10);
+        border-width: 1px;
+        drop-shadow-blur: 16px;
+        drop-shadow-color: rgba(0,0,0,0.6);
+
+        VerticalLayout {
+            padding: 6px;
+            spacing: 1px;
+
+            for spd in [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0] : Rectangle {
+                height: 26px;
+                border-radius: 5px;
+                background: spd == root.speed
+                    ? rgba(90, 160, 255, 0.20)
+                    : rgba(255,255,255,0.0);
+                animate background { duration: 100ms; }
+
+                Text {
+                    text: spd == 1.0  ? "Normal (1×)"
+                        : spd == 0.25 ? "0.25×"
+                        : spd == 0.5  ? "0.5×"
+                        : spd == 0.75 ? "0.75×"
+                        : spd == 1.25 ? "1.25×"
+                        : spd == 1.5  ? "1.5×"
+                        : "2×";
+                    color: spd == root.speed ? #7ab4ff : rgba(255,255,255,0.75);
+                    font-size: 12px;
+                    font-weight: spd == root.speed ? 700 : 400;
+                    x: 10px;
+                    y: (parent.height - self.preferred-height) / 2;
+                }
+                TouchArea {
+                    pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+                    clicked => {
+                        root.speed-changed(spd);
+                        root.controls-moved();
+                    }
+                }
+            }
+        }
+    }
+}

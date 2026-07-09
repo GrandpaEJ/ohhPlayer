@@ -1,3 +1,6 @@
+import { SeekBar } from "./controls-seek-bar.slint";
+import { SpeedPopup } from "./controls-speed-popup.slint";
+
 // Production-grade controls: seek bar on top, button row below.
 // Window management (min/max/close) removed — handled by the OS title bar.
 
@@ -37,55 +40,11 @@ export component Controls {
             alignment: end;
 
             // ── ROW 1: Seek bar ──────────────────────────────────────────
-            Rectangle {
-                height: 18px;
-
-                seek-ta := TouchArea {
-                    pointer-event(evt) => {
-                        root.controls-moved();
-                        if evt.kind == PointerEventKind.move && self.pressed {
-                            let v = max(0, min(1, self.mouse-x / parent.width));
-                            if !root.block-slider-update { root.seeked(v); }
-                        }
-                    }
-                    clicked => {
-                        root.controls-moved();
-                        root.seeked(max(0, min(1, self.mouse-x / parent.width)));
-                    }
-                }
-
-                // Track background
-                Rectangle {
-                    y: (parent.height - 4px) / 2;
-                    height: seek-ta.has_hover ? 6px : 4px;
-                    width: 100%;
-                    border-radius: 3px;
-                    background: rgba(255,255,255,0.18);
-                    animate height { duration: 120ms; easing: ease-out; }
-                }
-                // Filled portion
-                Rectangle {
-                    y: (parent.height - (seek-ta.has_hover ? 6px : 4px)) / 2;
-                    x: 0;
-                    height: seek-ta.has_hover ? 6px : 4px;
-                    width: parent.width * root.slider-value;
-                    border-radius: 3px;
-                    background: @linear-gradient(90deg, #5ba4f5, #a78bfa);
-                    animate height { duration: 120ms; easing: ease-out; }
-                }
-                // Thumb — only visible on hover
-                Rectangle {
-                    x: parent.width * root.slider-value - 7px;
-                    y: (parent.height - 14px) / 2;
-                    width: 14px;
-                    height: 14px;
-                    border-radius: 7px;
-                    background: #fff;
-                    opacity: seek-ta.has_hover ? 1.0 : 0.0;
-                    drop-shadow-blur: 4px;
-                    drop-shadow-color: rgba(90,160,255,0.6);
-                    animate opacity { duration: 150ms; }
-                }
+            SeekBar {
+                slider-value:        root.slider-value;
+                block-slider-update: root.block-slider-update;
+                seeked(val)          => { root.seeked(val); }
+                controls-moved       => { root.controls-moved(); }
             }
 
             // ── ROW 2: Button row ────────────────────────────────────────
@@ -308,55 +267,11 @@ export component Controls {
         }
 
         // ── Speed popup (floats above the button row) ─────────────────────
-        if speed-open : Rectangle {
-            x: parent.width - 110px;
-            y: -168px;
-            width: 110px;
-            height: 162px;
-            background: rgba(14, 14, 26, 0.96);
-            border-radius: 8px;
-            border-color: rgba(255, 255, 255, 0.10);
-            border-width: 1px;
-            drop-shadow-blur: 16px;
-            drop-shadow-color: rgba(0,0,0,0.6);
-
-            VerticalLayout {
-                padding: 6px;
-                spacing: 1px;
-
-                for spd in [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0] : Rectangle {
-                    height: 26px;
-                    border-radius: 5px;
-                    background: spd == root.speed
-                        ? rgba(90, 160, 255, 0.20)
-                        : rgba(255,255,255,0.0);
-                    animate background { duration: 100ms; }
-
-                    Text {
-                        text: spd == 1.0  ? "Normal (1×)"
-                            : spd == 0.25 ? "0.25×"
-                            : spd == 0.5  ? "0.5×"
-                            : spd == 0.75 ? "0.75×"
-                            : spd == 1.25 ? "1.25×"
-                            : spd == 1.5  ? "1.5×"
-                            : "2×";
-                        color: spd == root.speed ? #7ab4ff : rgba(255,255,255,0.75);
-                        font-size: 12px;
-                        font-weight: spd == root.speed ? 700 : 400;
-                        x: 10px;
-                        y: (parent.height - self.preferred-height) / 2;
-                    }
-                    TouchArea {
-                        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
-                        clicked => {
-                            root.speed = spd;
-                            root.speed-changed(spd);
-                            root.speed-open = false;
-                            root.controls-moved();
-                        }
-                    }
-                }
-            }
+        SpeedPopup {
+            speed: root.speed;
+            speed-open: root.speed-open;
+            speed-changed(val) => { root.speed = val; root.speed-changed(val); root.speed-open = false; }
+            controls-moved     => { root.controls-moved(); }
         }
     }
 }
