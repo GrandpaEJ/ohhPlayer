@@ -3,6 +3,7 @@ import { Controls } from "./controls.slint";
 import { CenterPlayButton } from "./center-button.slint";
 import { WindowKeyboard } from "./window-keyboard.slint";
 import { VideoLayer } from "./video-layer.slint";
+import { TopMenu } from "./top-menu.slint";
 
 export component AppWindow inherits Window {
     title: "ohhPlayer";
@@ -35,6 +36,8 @@ export component AppWindow inherits Window {
     callback volume-changed(float);
     callback speed-changed(float);
     callback close-window();
+    callback open-file();
+    callback open-recent();
 
     VerticalBox {
         padding: 0px;
@@ -146,6 +149,16 @@ export component AppWindow inherits Window {
                         }
                         clicked => { root.close-window(); }
                     }
+                }
+
+                // ── Top Menu (top-left, Hamburger) ───────────────────────────
+                TopMenu {
+                    x: 12px;
+                    y: 8px;
+                    controls-opacity: root.controls-opacity;
+                    open-file => { root.open-file(); }
+                    open-recent => { root.open-recent(); }
+                    controls-moved => { root.controls-moved(); }
                 }
 
                 // ── Debug Overlay (Top Right, left of close button) ──────────

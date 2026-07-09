@@ -99,6 +99,24 @@ pub fn setup_callbacks(
         });
     }
 
+    // ── Open File & Recent ───────────────────────────────────────────────
+    {
+        app.on_open_file(move || {
+            if let Some(path) = rfd::FileDialog::new()
+                .add_filter("Video", &["mp4", "mkv", "avi", "webm", "mov"])
+                .pick_file() 
+            {
+                if let Ok(exe) = std::env::current_exe() {
+                    let _ = std::process::Command::new(exe).arg(path).spawn();
+                    std::process::exit(0);
+                }
+            }
+        });
+        app.on_open_recent(move || {
+            println!("Recent files feature coming soon!");
+        });
+    }
+
     // ── Fullscreen toggle ─────────────────────────────────────────────────
     {
         let weak = app_weak.clone();

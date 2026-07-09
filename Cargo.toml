@@ -8,6 +8,7 @@ slint = "1"
 ffmpeg-sys-next = "8"
 sdl2 = "0.36"
 libc = "0.2"
+rfd = "0.17.2"
 
 [build-dependencies]
 slint-build = "1"

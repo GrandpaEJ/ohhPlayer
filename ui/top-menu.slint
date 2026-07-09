@@ -1,0 +1,103 @@
+export component TopMenu {
+    in property <float> controls-opacity;
+    callback open-file;
+    callback open-recent;
+    callback controls-moved;
+
+    property <bool> menu-open: false;
+
+    width: 32px;
+    height: 32px;
+
+    // Hamburger button
+    Rectangle {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        opacity: root.controls-opacity;
+        background: menu-open 
+            ? rgba(255, 255, 255, 0.25)
+            : (btn-ta.has_hover ? rgba(255, 255, 255, 0.15) : rgba(0, 0, 0, 0.35));
+        animate background { duration: 150ms; }
+        animate opacity { duration: 300ms; }
+
+        Text {
+            text: "☰";
+            color: btn-ta.has_hover || menu-open ? #fff : rgba(255,255,255,0.7);
+            font-size: 16px;
+            x: (parent.width - self.preferred-width) / 2;
+            y: (parent.height - self.preferred-height) / 2;
+        }
+
+        btn-ta := TouchArea {
+            pointer-event(evt) => {
+                if evt.kind == PointerEventKind.move { root.controls-moved(); }
+            }
+            clicked => {
+                root.menu-open = !root.menu-open;
+                root.controls-moved();
+            }
+        }
+    }
+
+    // Dropdown popup
+    if menu-open: Rectangle {
+        x: 0px;
+        y: 40px;
+        width: 140px;
+        height: 80px;
+        background: rgba(20, 20, 28, 0.95);
+        border-radius: 6px;
+        border-color: rgba(255, 255, 255, 0.1);
+        border-width: 1px;
+        drop-shadow-blur: 8px;
+        drop-shadow-color: rgba(0, 0, 0, 0.6);
+
+        VerticalLayout {
+            padding: 4px;
+            spacing: 2px;
+
+            Rectangle {
+                height: 32px;
+                border-radius: 4px;
+                background: item1-ta.has_hover ? rgba(255, 255, 255, 0.1) : transparent;
+                animate background { duration: 100ms; }
+                
+                Text {
+                    text: "📂 Open File...";
+                    color: rgba(255, 255, 255, 0.9);
+                    font-size: 13px;
+                    vertical-alignment: center;
+                    x: 10px;
+                }
+                item1-ta := TouchArea {
+                    clicked => {
+                        root.menu-open = false;
+                        root.open-file();
+                    }
+                }
+            }
+
+            Rectangle {
+                height: 32px;
+                border-radius: 4px;
+                background: item2-ta.has_hover ? rgba(255, 255, 255, 0.1) : transparent;
+                animate background { duration: 100ms; }
+                
+                Text {
+                    text: "🕒 Recent";
+                    color: rgba(255, 255, 255, 0.9);
+                    font-size: 13px;
+                    vertical-alignment: center;
+                    x: 10px;
+                }
+                item2-ta := TouchArea {
+                    clicked => {
+                        root.menu-open = false;
+                        root.open-recent();
+                    }
+                }
+            }
+        }
+    }
+}
