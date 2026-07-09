@@ -7,12 +7,15 @@ export component Controls {
     in-out property <bool> block-slider-update;
     in-out property <float> volume-level;
     in-out property <bool> is-fullscreen;
+    in-out property <bool> is-maximized;
 
     callback play-paused;
     callback seeked(float);
     callback fullscreen-toggled;
     callback volume-toggled;
     callback close-window;
+    callback minimize-window;
+    callback maximize-window;
     callback controls-moved;
 
     Rectangle {
@@ -97,6 +100,42 @@ export component Controls {
                 TouchArea {
                     moved => { root.controls-moved(); }
                     clicked => { root.fullscreen-toggled(); }
+                }
+            }
+
+            Rectangle {
+                width: 36px; height: 36px;
+                background: rgba(255, 255, 255, 0.06);
+
+                Text {
+                    text: "─";
+                    color: #ccc;
+                    font-size: 15px;
+                    x: (parent.width - self.preferred-width) / 2;
+                    y: (parent.height - self.preferred-height) / 2;
+                }
+
+                TouchArea {
+                    moved => { root.controls-moved(); }
+                    clicked => { root.minimize-window(); }
+                }
+            }
+
+            Rectangle {
+                width: 36px; height: 36px;
+                background: rgba(255, 255, 255, 0.06);
+
+                Text {
+                    text: root.is-maximized ? "❐" : "☐";
+                    color: #ccc;
+                    font-size: 15px;
+                    x: (parent.width - self.preferred-width) / 2;
+                    y: (parent.height - self.preferred-height) / 2;
+                }
+
+                TouchArea {
+                    moved => { root.controls-moved(); }
+                    clicked => { root.maximize-window(); }
                 }
             }
 

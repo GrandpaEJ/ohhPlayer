@@ -106,6 +106,26 @@ fn main() {
     }
 
     {
+        let weak = app_weak.clone();
+        app.on_minimize_window(move || {
+            if let Some(w) = weak.upgrade() {
+                w.window().set_minimized(true);
+            }
+        });
+    }
+
+    {
+        let weak = app_weak.clone();
+        app.on_maximize_window(move || {
+            if let Some(w) = weak.upgrade() {
+                let mx = !w.window().is_maximized();
+                w.window().set_maximized(mx);
+                w.set_is_maximized(mx);
+            }
+        });
+    }
+
+    {
         let v = vol.clone();
         let act = ui.last_activity.clone();
         app.on_volume_toggled(move || {

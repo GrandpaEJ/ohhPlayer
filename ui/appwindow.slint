@@ -19,6 +19,7 @@ export component AppWindow inherits Window {
     in-out property <float> center-btn-opacity: 1;
     in-out property <float> volume-level: 0.8;
     in-out property <bool> is-fullscreen;
+    in-out property <bool> is-maximized;
 
     callback play-paused();
     callback seeked(float);
@@ -27,6 +28,8 @@ export component AppWindow inherits Window {
     callback controls-moved();
     callback volume-toggled();
     callback close-window();
+    callback minimize-window();
+    callback maximize-window();
 
     VerticalBox {
         padding: 0px;
@@ -42,6 +45,8 @@ export component AppWindow inherits Window {
                     if event.text == "f" || event.text == "F" { root.fullscreen-toggled(); return accept; }
                     if event.text == "Escape" { root.close-window(); return accept; }
                     if event.text == "q" || event.text == "\u{11}" || (event.text == "" && event.modifiers.control) { root.close-window(); return accept; }
+                    if event.text == "m" || event.text == "M" { root.minimize-window(); return accept; }
+                    if event.text == "x" || event.text == "X" { root.maximize-window(); return accept; }
                     if event.text == "j" { root.seek-relative(-10); return accept; }
                     if event.text == "l" { root.seek-relative(10); return accept; }
                     if event.text == "," { root.seek-relative(-5); return accept; }
@@ -104,12 +109,15 @@ export component AppWindow inherits Window {
                             block-slider-update: root.block-slider-update;
                             volume-level: root.volume-level;
                             is-fullscreen: root.is-fullscreen;
+                            is-maximized: root.is-maximized;
 
                             play-paused => { root.play-paused(); }
                             seeked(val) => { root.seeked(val); }
                             fullscreen-toggled => { root.fullscreen-toggled(); }
                             volume-toggled => { root.volume-toggled(); }
                             close-window => { root.close-window(); }
+                            minimize-window => { root.minimize-window(); }
+                            maximize-window => { root.maximize-window(); }
                             controls-moved => { root.controls-moved(); }
                         }
                     }
