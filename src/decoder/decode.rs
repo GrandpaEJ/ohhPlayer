@@ -160,7 +160,10 @@ pub(crate) fn decode_video(
             }
 
             let ret = av_read_frame(fmt_ctx, pkt);
-            if ret < 0 { break; }
+            if ret < 0 { 
+                command.lock().unwrap().playing = false;
+                continue; 
+            }
 
             if (*pkt).stream_index != video_idx {
                 av_packet_unref(pkt);

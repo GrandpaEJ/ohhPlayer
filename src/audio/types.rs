@@ -7,6 +7,7 @@ pub struct AudioShared {
     pub playing:  bool,
     /// When Some(t), the decode loop should seek to `t` seconds.
     pub seek_to:  Option<f64>,
+    pub quit:     bool,
 }
 
 impl AudioShared {
@@ -16,6 +17,7 @@ impl AudioShared {
             volume:  0.8,
             playing: true,
             seek_to: None,
+            quit:    false,
         }
     }
 }

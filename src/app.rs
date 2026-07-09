@@ -26,7 +26,14 @@ pub fn setup_callbacks(
         app.on_play_paused(move || {
             let st = state_p.lock().unwrap();
             let playing = !st.playing;
+            let at_end = st.duration > 0.0 && st.position >= st.duration - 0.1;
             drop(st);
+            
+            if playing && at_end {
+                cmd_p.lock().unwrap().seek_target = Some(0.0);
+                audio_p.lock().unwrap().seek_to   = Some(0.0);
+            }
+            
             cmd_p.lock().unwrap().playing            = playing;
             audio_p.lock().unwrap().playing          = playing;
             *act_p.borrow_mut() = std::time::Instant::now();
@@ -84,8 +91,10 @@ pub fn setup_callbacks(
     // ── Close window (ESC / Q / native X button) ─────────────────────────
     {
         let cmd_q = cmd.clone();
+        let audio_q = audio_shared.clone();
         app.on_close_window(move || {
             cmd_q.lock().unwrap().quit = true;
+            audio_q.lock().unwrap().quit = true;
             std::process::exit(0);
         });
     }

@@ -93,6 +93,8 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
             {
                 let mut s = shared.lock().unwrap();
 
+                if s.quit { break; }
+
                 if let Some(target) = s.seek_to.take() {
                     // Flush decode pipeline
                     avcodec_flush_buffers(codec_ctx);
@@ -120,7 +122,10 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
                 }
             }
 
-            if av_read_frame(fmt_ctx, pkt) < 0 { break; }
+            if av_read_frame(fmt_ctx, pkt) < 0 { 
+                shared.lock().unwrap().playing = false;
+                continue; 
+            }
 
             if (*pkt).stream_index != audio_idx {
                 av_packet_unref(pkt);
