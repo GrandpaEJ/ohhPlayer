@@ -145,6 +145,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
                 // Skip frames until we hit the precise seek target
                 if let Some(target) = skip_to_pts {
                     if frame_pts >= 0.0 && frame_pts < target {
+                        av_frame_unref(frame);
                         continue;
                     }
                     skip_to_pts = None;
@@ -180,6 +181,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
                 }
 
                 av_free(dst_buf as *mut libc::c_void);
+                av_frame_unref(frame);
             }
         }
 

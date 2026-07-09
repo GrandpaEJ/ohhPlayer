@@ -181,12 +181,14 @@ pub(crate) fn decode_video(
                 let frame_pts = if (*frame).pts != i64::MIN && (*frame).pts != i64::MAX {
                     (*frame).pts as f64 * tb.num as f64 / tb.den as f64
                 } else {
+                    av_frame_unref(frame);
                     continue; // Skip frames without a valid timestamp
                 };
 
                 // Skip frames until we hit the precise seek target
                 if let Some(target) = skip_to_pts {
                     if frame_pts < target {
+                        av_frame_unref(frame);
                         continue;
                     }
                     skip_to_pts = None;
@@ -242,6 +244,8 @@ pub(crate) fn decode_video(
                     width:  native_w,
                     height: native_h,
                 });
+
+                av_frame_unref(frame);
             }
         }
 
