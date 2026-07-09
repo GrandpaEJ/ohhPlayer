@@ -21,4 +21,6 @@ pub struct DecoderState {
     pub position: f64,
     pub duration: f64,
     pub playing: bool,
+    pub video_width: u32,
+    pub video_height: u32,
 }

@@ -219,6 +219,9 @@ pub fn setup_callbacks(
         slint::SharedString::from(""),
     )));
 
+    let mut last_w = 0_u32;
+    let mut last_h = 0_u32;
+
     let timer = slint::Timer::default();
     timer.start(
         slint::TimerMode::Repeated,
@@ -233,10 +236,40 @@ pub fn setup_callbacks(
                 a.set_frame(slint::Image::from_rgb8(f.buffer));
             }
 
-            let (pos, dur, playing) = {
+            let (pos, dur, playing, vw, vh) = {
                 let st = state.lock().unwrap();
-                (st.position, st.duration, st.playing)
+                (st.position, st.duration, st.playing, st.video_width, st.video_height)
             };
+
+            // Auto-scale window to video aspect ratio when dimensions change
+            if vw > 0 && vh > 0 && (vw != last_w || vh != last_h) {
+                last_w = vw;
+                last_h = vh;
+                
+                if !a.window().is_fullscreen() {
+                    let mut win_w = vw as f32;
+                    let mut win_h = vh as f32;
+                    
+                    let max_w = 1280.0;
+                    let max_h = 720.0;
+                    let min_w = 400.0;
+                    
+                    if win_w > max_w || win_h > max_h {
+                        let scale_w = max_w / win_w;
+                        let scale_h = max_h / win_h;
+                        let scale = scale_w.min(scale_h);
+                        win_w *= scale;
+                        win_h *= scale;
+                    }
+                    if win_w < min_w {
+                        let scale = min_w / win_w;
+                        win_w *= scale;
+                        win_h *= scale;
+                    }
+                    
+                    a.window().set_size(slint::PhysicalSize::new(win_w as u32, win_h as u32));
+                }
+            }
 
             a.set_time_text(slint::SharedString::from(ui_state::format_time(pos, dur)));
 

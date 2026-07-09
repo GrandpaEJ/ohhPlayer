@@ -130,6 +130,12 @@ pub(crate) fn decode_video(
         let native_w = (*codec_ctx).width as u32;
         let native_h = (*codec_ctx).height as u32;
 
+        {
+            let mut st = state.lock().unwrap();
+            st.video_width = native_w;
+            st.video_height = native_h;
+        }
+
         let sws_ctx = sws_getContext(
             (*codec_ctx).width,
             (*codec_ctx).height,
