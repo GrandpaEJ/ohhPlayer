@@ -2,63 +2,9 @@ use std::ffi::CString;
 use std::ptr;
 use std::sync::{Arc, Mutex};
 
-pub struct DecodedFrame {
-    pub data: Vec<u8>,
-    pub width: u32,
-    pub height: u32,
-}
+use super::{DecodedFrame, DecoderCommand, DecoderState};
 
-pub struct DecoderCommand {
-    pub seek_target: Option<f64>,
-    pub playing: bool,
-    pub quit: bool,
-    pub speed: f32,
-}
-
-impl Default for DecoderCommand {
-    fn default() -> Self {
-        Self { seek_target: None, playing: true, quit: false, speed: 1.0 }
-    }
-}
-
-#[derive(Clone, Default)]
-pub struct DecoderState {
-    pub position: f64,
-    pub duration: f64,
-    pub playing: bool,
-}
-
-pub struct Decoder {
-    command: Arc<Mutex<DecoderCommand>>,
-    state:   Arc<Mutex<DecoderState>>,
-    frame:   Arc<Mutex<Option<DecodedFrame>>>,
-}
-
-impl Decoder {
-    pub fn new() -> Self {
-        Self {
-            command: Arc::new(Mutex::new(DecoderCommand::default())),
-            state:   Arc::new(Mutex::new(DecoderState::default())),
-            frame:   Arc::new(Mutex::new(None)),
-        }
-    }
-
-    pub fn command(&self) -> Arc<Mutex<DecoderCommand>> { self.command.clone() }
-    pub fn state(&self)   -> Arc<Mutex<DecoderState>>   { self.state.clone()   }
-    pub fn frame(&self)   -> Arc<Mutex<Option<DecodedFrame>>> { self.frame.clone() }
-
-    pub fn start(&self, path: &str, target_w: u32, target_h: u32) {
-        let cmd   = self.command.clone();
-        let state = self.state.clone();
-        let frame = self.frame.clone();
-        let path  = path.to_owned();
-        std::thread::spawn(move || {
-            decode_video(&path, target_w, target_h, cmd, state, frame);
-        });
-    }
-}
-
-fn decode_video(
+pub(crate) fn decode_video(
     path: &str,
     target_w: u32,
     target_h: u32,
