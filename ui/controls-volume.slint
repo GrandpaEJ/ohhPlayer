@@ -1,0 +1,78 @@
+export component VolumeControl {
+    in-out property <float> volume-level;
+    callback volume-toggled;
+    callback volume-changed(float);
+    callback controls-moved;
+
+    HorizontalLayout {
+        spacing: 4px;
+        
+        // Volume icon (mute toggle)
+        Rectangle {
+            width: 30px; height: 36px;
+            border-radius: 6px;
+            background: vol-icon-ta.has_hover ? rgba(255,255,255,0.14) : rgba(255,255,255,0.0);
+            animate background { duration: 120ms; }
+
+            Text {
+                text: root.volume-level > 0.5 ? "🔊"
+                    : root.volume-level > 0   ? "🔉"
+                    :                           "🔇";
+                color: rgba(255,255,255,0.75);
+                font-size: 14px;
+                x: (parent.width - self.preferred-width) / 2;
+                y: (parent.height - self.preferred-height) / 2;
+            }
+            vol-icon-ta := TouchArea {
+                pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+                clicked => { root.volume-toggled(); }
+            }
+        }
+
+        // Volume slider (compact)
+        Rectangle {
+            width: 72px; height: 36px;
+
+            vol-ta := TouchArea {
+                pointer-event(evt) => {
+                    root.controls-moved();
+                    if evt.kind == PointerEventKind.move && self.pressed {
+                        root.volume-changed(max(0, min(1, self.mouse-x / parent.width)));
+                    }
+                }
+                clicked => {
+                    root.volume-changed(max(0, min(1, self.mouse-x / parent.width)));
+                }
+            }
+            // Track
+            Rectangle {
+                y: (parent.height - 3px) / 2;
+                height: 3px; width: 100%;
+                border-radius: 2px;
+                background: rgba(255,255,255,0.18);
+            }
+            // Fill
+            Rectangle {
+                y: (parent.height - 3px) / 2;
+                height: 3px;
+                width: parent.width * root.volume-level;
+                border-radius: 2px;
+                background: vol-ta.has_hover ? rgba(255,255,255,0.9) : rgba(255,255,255,0.7);
+                animate background { duration: 120ms; }
+            }
+            // Thumb — pops and scales up on hover
+            Rectangle {
+                x: parent.width * root.volume-level - (vol-ta.has_hover || vol-ta.pressed ? 6px : 0px);
+                y: (parent.height - (vol-ta.has_hover || vol-ta.pressed ? 12px : 0px)) / 2;
+                width: vol-ta.has_hover || vol-ta.pressed ? 12px : 0px;
+                height: vol-ta.has_hover || vol-ta.pressed ? 12px : 0px;
+                border-radius: vol-ta.has_hover || vol-ta.pressed ? 6px : 0px;
+                background: #fff;
+                opacity: vol-ta.has_hover || vol-ta.pressed ? 1.0 : 0.0;
+                drop-shadow-blur: 4px;
+                drop-shadow-color: rgba(255, 255, 255, 0.4);
+                animate width, height, x, y, border-radius, opacity { duration: 150ms; easing: cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+            }
+        }
+    }
+}

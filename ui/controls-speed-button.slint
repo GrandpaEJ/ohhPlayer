@@ -1,0 +1,38 @@
+export component SpeedButton inherits Rectangle {
+    in property <float> speed;
+    in-out property <bool> speed-open;
+    callback clicked;
+    callback controls-moved;
+
+    width: 44px; height: 28px;
+    border-radius: 5px;
+    background: speed-open
+        ? rgba(90,160,255,0.22)
+        : spd-ta.has_hover
+            ? rgba(255,255,255,0.14)
+            : rgba(255,255,255,0.08);
+    border-color: speed-open
+        ? rgba(90,160,255,0.5)
+        : rgba(255,255,255,0.12);
+    border-width: 1px;
+    animate background { duration: 120ms; }
+
+    Text {
+        text: root.speed == 1.0  ? "1× "
+            : root.speed == 0.25 ? ".25×"
+            : root.speed == 0.5  ? ".5× "
+            : root.speed == 0.75 ? ".75×"
+            : root.speed == 1.25 ? "1.25"
+            : root.speed == 1.5  ? "1.5×"
+            :                      "2×  ";
+        color: speed-open ? #7ab4ff : rgba(255,255,255,0.8);
+        font-size: 11px;
+        font-weight: 600;
+        x: (parent.width - self.preferred-width) / 2;
+        y: (parent.height - self.preferred-height) / 2;
+    }
+    spd-ta := TouchArea {
+        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+        clicked => { root.speed-open = !root.speed-open; root.clicked(); root.controls-moved(); }
+    }
+}

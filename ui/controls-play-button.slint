@@ -1,0 +1,22 @@
+export component PlayButton inherits Rectangle {
+    in-out property <bool> playing;
+    callback clicked;
+    callback controls-moved;
+
+    width: 36px; height: 36px;
+    border-radius: 6px;
+    background: play-ta.has_hover ? rgba(255,255,255,0.14) : rgba(255,255,255,0.0);
+    animate background { duration: 120ms; }
+
+    Text {
+        text: root.playing ? "⏸" : "▶";
+        color: #fff;
+        font-size: 16px;
+        x: (parent.width - self.preferred-width) / 2;
+        y: (parent.height - self.preferred-height) / 2;
+    }
+    play-ta := TouchArea {
+        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+        clicked => { root.clicked(); }
+    }
+}

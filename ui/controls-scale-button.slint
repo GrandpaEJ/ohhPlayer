@@ -1,0 +1,32 @@
+export component ScaleButton inherits Rectangle {
+    in-out property <int> scale-mode;
+    callback clicked;
+    callback controls-moved;
+
+    width: 34px; height: 36px;
+    border-radius: 6px;
+    background: scale-ta.has_hover ? rgba(255,255,255,0.14) : rgba(255,255,255,0.0);
+    animate background { duration: 120ms; }
+
+    Text {
+        text: root.scale-mode == 0 ? "🔲" :
+              root.scale-mode == 1 ? "↔️" :
+              root.scale-mode == 2 ? "🔍" :
+              root.scale-mode == 3 ? "100%" :
+              root.scale-mode == 4 ? "1:1" :
+              root.scale-mode == 5 ? "16:9" : "9:16";
+        color: rgba(255,255,255,0.75);
+        font-size: root.scale-mode >= 3 ? 10px : 14px;
+        font-weight: 600;
+        x: (parent.width - self.preferred-width) / 2;
+        y: (parent.height - self.preferred-height) / 2;
+    }
+    scale-ta := TouchArea {
+        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+        clicked => {
+            root.scale-mode = root.scale-mode == 6 ? 0 : root.scale-mode + 1;
+            root.clicked();
+            root.controls-moved();
+        }
+    }
+}
