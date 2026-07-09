@@ -113,6 +113,38 @@ export component AppWindow inherits Window {
                         controls-moved     => { root.controls-moved(); }
                     }
                 }
+
+                // ── Close button (top-right, fades with controls) ────────────
+                Rectangle {
+                    x: parent.width - 42px;
+                    y: 8px;
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 16px;
+                    opacity: root.controls-opacity;
+                    background: close-ta.has_hover
+                        ? rgba(220, 60, 60, 0.85)
+                        : rgba(0, 0, 0, 0.35);
+                    animate background { duration: 150ms; }
+                    animate opacity    { duration: 300ms; easing: ease-in-out; }
+
+                    Text {
+                        text: "✕";
+                        color: close-ta.has_hover ? #fff : rgba(255,255,255,0.55);
+                        font-size: 13px;
+                        font-weight: 600;
+                        x: (parent.width  - self.preferred-width)  / 2;
+                        y: (parent.height - self.preferred-height) / 2;
+                        animate color { duration: 150ms; }
+                    }
+                    close-ta := TouchArea {
+                        pointer-event(evt) => {
+                            if evt.kind == PointerEventKind.move { root.controls-moved(); }
+                        }
+                        clicked => { root.close-window(); }
+                    }
+                }
+
             }
         }
     }
