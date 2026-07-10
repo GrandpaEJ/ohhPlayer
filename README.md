@@ -17,7 +17,7 @@ It leverages the power of **FFmpeg** for robust hardware/software media decoding
 
 We built ohhPlayer with a strict focus on resource efficiency. It is designed to run smoothly on low-end hardware and lightweight window managers (e.g., Niri, XFCE).
 
-- **Ultra-Low Memory Footprint:** Idles at ~23MB RAM. During 1080p playback, it averages ~50-80MB. This is achieved by forcing the `winit-femtovg` renderer (bypassing the memory-heavy Skia backend) and aggressively capping audio PCM buffers.
+- **Low Memory Footprint:** Idles at ~23MB RAM. During playback, memory scales with video length (typically ~70MB for short clips up to ~250MB for 10+ hour videos). This scaling is caused by FFmpeg caching large MP4 `moov` atom indexes in memory. We force the `winit-femtovg` renderer to bypass the memory-heavy Skia backend, ensuring UI overhead remains minimal.
 - **Zero-Latency Startup:** Bypasses FFmpeg's default stream probe buffering by enforcing `probesize=32000` and `analyzeduration=0`. Videos open instantly without reading megabytes of metadata.
 - **Zero-Asset UI:** The entire interface is drawn using raw mathematical SVG paths rendered directly by Slint. There are no external font dependencies, PNGs, or emoji glyphs taking up binary space or memory.
 - **Smart Hardware Threading:** Limits FFmpeg's internal codec context threads to `1`, preventing unnecessary CPU core spin-ups and avoiding massive RAM bloat for MP4 `moov` atom parsing.
