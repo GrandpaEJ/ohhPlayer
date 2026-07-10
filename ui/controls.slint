@@ -49,11 +49,11 @@ export component Controls {
         background: @linear-gradient(0deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.55) 70%, transparent 100%);
 
         VerticalLayout {
-            padding-left: 16px;
-            padding-right: 16px;
-            padding-top: 8px;
-            padding-bottom: 10px;
-            spacing: 6px;
+            padding-left: 20px;
+            padding-right: 20px;
+            padding-top: 12px;
+            padding-bottom: 21px;
+            spacing: 12px;
             alignment: end;
 
             // ── ROW 1: Seek bar ──────────────────────────────────────────
@@ -68,41 +68,66 @@ export component Controls {
 
             // ── ROW 2: Button row ────────────────────────────────────────
             HorizontalLayout {
-                spacing: 4px;
-                alignment: start;
-                height: 36px;
+                spacing: 12px;
+                height: 48px; // Increased slightly for pill padding
 
                 // ── Left cluster ─────────────────────────────────────────
 
-                // Play / Pause
-                PlayButton {
-                    playing <=> root.playing;
-                    clicked => { root.play-paused(); }
-                    controls-moved => { root.controls-moved(); }
+                // Play / Pause group
+                Rectangle {
+                    border-radius: 8px;
+                    background: rgba(255, 255, 255, 0.05);
+                    border-width: 1px;
+                    border-color: rgba(255, 255, 255, 0.08);
+                    HorizontalLayout {
+                        padding: 4px;
+                        PlayButton {
+                            playing <=> root.playing;
+                            clicked => { root.play-paused(); }
+                            controls-moved => { root.controls-moved(); }
+                        }
+                    }
                 }
 
-                // Skip −10 s
-                SkipButton {
-                    icon-text: "↺";
-                    duration-text: "10";
-                    clicked => { root.seek-relative(-10); }
-                    controls-moved => { root.controls-moved(); }
+                // Skip buttons group
+                Rectangle {
+                    border-radius: 8px;
+                    background: rgba(255, 255, 255, 0.05);
+                    border-width: 1px;
+                    border-color: rgba(255, 255, 255, 0.08);
+                    HorizontalLayout {
+                        padding: 4px;
+                        spacing: 4px;
+                        SkipButton {
+                            is-forward: false;
+                            duration-text: "10";
+                            clicked => { root.seek-relative(-10); }
+                            controls-moved => { root.controls-moved(); }
+                        }
+                        SkipButton {
+                            is-forward: true;
+                            duration-text: "10";
+                            clicked => { root.seek-relative(10); }
+                            controls-moved => { root.controls-moved(); }
+                        }
+                    }
                 }
 
-                // Skip +10 s
-                SkipButton {
-                    icon-text: "↻";
-                    duration-text: "10";
-                    clicked => { root.seek-relative(10); }
-                    controls-moved => { root.controls-moved(); }
-                }
-
-                // Volume control (Icon + Slider)
-                VolumeControl {
-                    volume-level <=> root.volume-level;
-                    volume-toggled => { root.volume-toggled(); }
-                    volume-changed(v) => { root.volume-changed(v); }
-                    controls-moved => { root.controls-moved(); }
+                // Volume control group
+                Rectangle {
+                    border-radius: 8px;
+                    background: rgba(255, 255, 255, 0.05);
+                    border-width: 1px;
+                    border-color: rgba(255, 255, 255, 0.08);
+                    HorizontalLayout {
+                        padding: 4px;
+                        VolumeControl {
+                            volume-level <=> root.volume-level;
+                            volume-toggled => { root.volume-toggled(); }
+                            volume-changed(v) => { root.volume-changed(v); }
+                            controls-moved => { root.controls-moved(); }
+                        }
+                    }
                 }
 
                 // Time display
@@ -119,63 +144,77 @@ export component Controls {
                 Rectangle { horizontal-stretch: 1; }
 
                 // ── Right cluster ─────────────────────────────────────────
-
-                // Always On Top button
                 Rectangle {
-                    width: 32px; height: 32px; border-radius: 6px;
-                    background: aot-ta.has_hover ? rgba(255,255,255,0.1) : transparent;
-                    animate background { duration: 150ms; }
-                    Text {
-                        text: "📌";
-                        color: root.always-on-top ? #0cf : #ccc;
-                        font-size: 14px;
-                        horizontal-alignment: center;
-                        vertical-alignment: center;
-                    }
-                    aot-ta := TouchArea {
-                        clicked => { root.always-on-top-toggled(); }
-                        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
-                    }
-                }
+                    border-radius: 8px;
+                    background: rgba(255, 255, 255, 0.05);
+                    border-width: 1px;
+                    border-color: rgba(255, 255, 255, 0.08);
+                    HorizontalLayout {
+                        padding: 4px;
+                        spacing: 4px;
 
-                // Sleep Timer button
-                Rectangle {
-                    width: 32px; height: 32px; border-radius: 6px;
-                    background: sleep-ta.has_hover ? rgba(255,255,255,0.1) : transparent;
-                    animate background { duration: 150ms; }
-                    Text {
-                        text: "🕒";
-                        color: root.sleep-timer-val > 0 ? #0cf : #ccc;
-                        font-size: 14px;
-                        horizontal-alignment: center;
-                        vertical-alignment: center;
+                        // Always On Top button
+                        Rectangle {
+                            width: 40px; height: 40px; border-radius: 6px;
+                            background: aot-ta.has_hover ? rgba(255,255,255,0.1) : transparent;
+                            animate background { duration: 150ms; }
+                            Path {
+                                width: 20px; height: 22px;
+                                stroke: root.always-on-top ? #0cf : #ccc;
+                                stroke-width: 1.5px;
+                                fill: transparent;
+                                commands: "M 7 2 L 13 2 L 13 6 L 16 10 L 16 14 L 11 14 L 11 20 L 9 20 L 9 14 L 4 14 L 4 10 L 7 6 Z";
+                                x: (parent.width - self.width) / 2;
+                                y: (parent.height - self.height) / 2;
+                            }
+                            aot-ta := TouchArea {
+                                clicked => { root.always-on-top-toggled(); }
+                                pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+                            }
+                        }
+
+                        // Sleep Timer button
+                        Rectangle {
+                            width: 40px; height: 40px; border-radius: 6px;
+                            background: sleep-ta.has_hover ? rgba(255,255,255,0.1) : transparent;
+                            animate background { duration: 150ms; }
+                            Path {
+                                width: 20px; height: 20px;
+                                stroke: root.sleep-timer-val > 0 ? #0cf : #ccc;
+                                stroke-width: 1.5px;
+                                fill: transparent;
+                                commands: "M 10 1 A 9 9 0 1 0 10.001 1 Z M 10 4 L 10 10 L 13 13";
+                                x: (parent.width - self.width) / 2;
+                                y: (parent.height - self.height) / 2;
+                            }
+                            sleep-ta := TouchArea {
+                                clicked => { root.sleep-timer-open = !root.sleep-timer-open; root.speed-open = false; }
+                                pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
+                            }
+                        }
+
+                        // Speed selector button
+                        SpeedButton {
+                            speed: root.speed;
+                            speed-open <=> root.speed-open;
+                            clicked => { }
+                            controls-moved => { root.controls-moved(); }
+                        }
+
+                        // Scale mode toggle button
+                        ScaleButton {
+                            scale-mode <=> root.scale-mode;
+                            clicked => { root.scale-mode-changed(root.scale-mode); }
+                            controls-moved => { root.controls-moved(); }
+                        }
+
+                        // Fullscreen button
+                        FullscreenButton {
+                            is-fullscreen <=> root.is-fullscreen;
+                            clicked => { root.fullscreen-toggled(); }
+                            controls-moved => { root.controls-moved(); }
+                        }
                     }
-                    sleep-ta := TouchArea {
-                        clicked => { root.sleep-timer-open = !root.sleep-timer-open; root.speed-open = false; }
-                        pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
-                    }
-                }
-
-                // Speed selector button
-                SpeedButton {
-                    speed: root.speed;
-                    speed-open <=> root.speed-open;
-                    clicked => { }
-                    controls-moved => { root.controls-moved(); }
-                }
-
-                // Scale mode toggle button
-                ScaleButton {
-                    scale-mode <=> root.scale-mode;
-                    clicked => { root.scale-mode-changed(root.scale-mode); }
-                    controls-moved => { root.controls-moved(); }
-                }
-
-                // Fullscreen button
-                FullscreenButton {
-                    is-fullscreen <=> root.is-fullscreen;
-                    clicked => { root.fullscreen-toggled(); }
-                    controls-moved => { root.controls-moved(); }
                 }
             }
         }

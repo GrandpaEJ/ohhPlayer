@@ -9,19 +9,21 @@ export component VolumeControl {
         
         // Volume icon (mute toggle)
         Rectangle {
-            width: 30px; height: 36px;
+            width: 40px; height: 40px;
             border-radius: 6px;
             background: vol-icon-ta.has_hover ? rgba(255,255,255,0.14) : rgba(255,255,255,0.0);
             animate background { duration: 120ms; }
 
-            Text {
-                text: root.volume-level > 0.5 ? "🔊"
-                    : root.volume-level > 0   ? "🔉"
-                    :                           "🔇";
-                color: rgba(255,255,255,0.75);
-                font-size: 14px;
-                x: (parent.width - self.preferred-width) / 2;
-                y: (parent.height - self.preferred-height) / 2;
+            Path {
+                width: 22px; height: 16px;
+                stroke: rgba(255,255,255,0.75);
+                stroke-width: 1.5px;
+                fill: transparent;
+                commands: root.volume-level == 0 ? "M 2 5 L 6 5 L 11 1 L 11 15 L 6 11 L 2 11 Z M 14 5 L 20 11 M 20 5 L 14 11" :
+                          (root.volume-level < 0.5 ? "M 2 5 L 6 5 L 11 1 L 11 15 L 6 11 L 2 11 Z M 14 5 A 4 4 0 0 1 14 11" :
+                          "M 2 5 L 6 5 L 11 1 L 11 15 L 6 11 L 2 11 Z M 14 4 A 5 5 0 0 1 14 12 M 18 1 A 8 8 0 0 1 18 15");
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
             }
             vol-icon-ta := TouchArea {
                 pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
@@ -31,7 +33,7 @@ export component VolumeControl {
 
         // Volume slider (compact)
         Rectangle {
-            width: 72px; height: 36px;
+            width: 80px; height: 40px;
 
             vol-ta := TouchArea {
                 pointer-event(evt) => {
@@ -62,13 +64,13 @@ export component VolumeControl {
             }
             // Thumb — pops and scales up on hover
             Rectangle {
-                x: parent.width * root.volume-level - (vol-ta.has_hover || vol-ta.pressed ? 6px : 0px);
-                y: (parent.height - (vol-ta.has_hover || vol-ta.pressed ? 12px : 0px)) / 2;
-                width: vol-ta.has_hover || vol-ta.pressed ? 12px : 0px;
-                height: vol-ta.has_hover || vol-ta.pressed ? 12px : 0px;
-                border-radius: vol-ta.has_hover || vol-ta.pressed ? 6px : 0px;
+                x: parent.width * root.volume-level - (vol-ta.has_hover || vol-ta.pressed ? 6px : 4px);
+                y: (parent.height - (vol-ta.has_hover || vol-ta.pressed ? 12px : 8px)) / 2;
+                width: vol-ta.has_hover || vol-ta.pressed ? 12px : 8px;
+                height: vol-ta.has_hover || vol-ta.pressed ? 12px : 8px;
+                border-radius: vol-ta.has_hover || vol-ta.pressed ? 6px : 4px;
                 background: #fff;
-                opacity: vol-ta.has_hover || vol-ta.pressed ? 1.0 : 0.0;
+                opacity: 1.0;
                 drop-shadow-blur: 4px;
                 drop-shadow-color: rgba(255, 255, 255, 0.4);
                 animate width, height, x, y, border-radius, opacity { duration: 150ms; easing: cubic-bezier(0.175, 0.885, 0.32, 1.275); }

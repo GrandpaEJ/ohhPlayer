@@ -4,7 +4,8 @@ export component SpeedButton inherits Rectangle {
     callback clicked;
     callback controls-moved;
 
-    width: 44px; height: 28px;
+    width: 48px; height: 32px;
+    y: (40px - 32px) / 2;
     border-radius: 5px;
     background: speed-open
         ? rgba(90,160,255,0.22)

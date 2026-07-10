@@ -10,12 +10,14 @@ export component CenterPlayButton {
         border-width: 2px;
         background: rgba(0, 0, 0, 0.45);
 
-        Text {
-            text: root.playing ? "⏸" : "▶";
-            color: #fff;
-            font-size: 30px;
-            x: (parent.width - self.preferred-width) / 2;
-            y: (parent.height - self.preferred-height) / 2;
+        Path {
+            width: 24px; height: 24px;
+            fill: #fff;
+            commands: root.playing 
+                ? "M 4 0 L 9 0 L 9 24 L 4 24 Z M 15 0 L 20 0 L 20 24 L 15 24 Z" 
+                : "M 4 0 L 22 12 L 4 24 Z";
+            x: (parent.width - self.width) / 2 + (root.playing ? 0px : 2px);
+            y: (parent.height - self.height) / 2;
         }
 
         TouchArea {

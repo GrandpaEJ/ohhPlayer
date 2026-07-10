@@ -6,47 +6,53 @@
 
 ## Project Overview
 
-**ohhPlayer** is a minimal, production-quality video player written in Rust.
+**ohhPlayer** is a minimal, production-quality video player written in Rust. It is strictly optimized to be tiny, fast, and use as few resources as possible.
 
 | Layer | Technology | Purpose |
 |---|---|---|
-| UI | [Slint](https://slint.dev) (`.slint` files) | Declarative UI, controls, animations |
-| Video decode | FFmpeg (`ffmpeg-sys-next`) | Demux, decode, scale to RGB |
-| Audio decode | FFmpeg + SDL2 | Demux, decode, resample to 44100 Hz f32 |
+| UI | [Slint](https://slint.dev) (`.slint` files) | Declarative UI, controls, animations (uses FemtoVG) |
+| Video decode | FFmpeg (`ffmpeg-sys-next`) | Decode video packets, scale to RGB |
+| Audio decode | FFmpeg + SDL2 | Decode audio packets, resample to 44100 Hz f32 |
 | Audio playback | SDL2 (`sdl2` crate) | Push-mode audio callback |
-| Glue | Rust `main.rs` | Wires UI callbacks ↔ decoder/audio threads |
+| Glue | Rust `main.rs` | Wires UI callbacks ↔ demux/decoder threads |
 
 ---
 
-## Architecture
+## Architecture (Single Demuxer Model)
 
 ```
-┌──────────────┐     Arc<Mutex<DecoderCommand>>     ┌─────────────────────┐
-│   main.rs    │ ──────────────────────────────────► │  decoder thread     │
-│  (Slint UI   │                                     │  (decode_video)     │
-│   thread)    │ ◄────────────────────────────────── │                     │
-│              │     Arc<Mutex<DecoderState>>         └─────────────────────┘
-│              │     Arc<Mutex<Option<DecodedFrame>>>
-│              │
-│              │     Arc<Mutex<AudioShared>>          ┌─────────────────────┐
-│              │ ──────────────────────────────────► │  audio decode thread │
-│              │                                     │  (decode_audio)      │
-│              │                                     └──────────┬──────────┘
-│              │                                                │ AudioShared.buffer
-│   16ms timer │                                     ┌──────────▼──────────┐
-│   (60 fps)   │                                     │  SDL AudioCallback   │
-└──────────────┘                                     │  (audio hw thread)   │
-                                                     └─────────────────────┘
+┌──────────────┐    Arc<Mutex<DecoderCommand>>    ┌─────────────────────┐
+│   main.rs    │ ───────────────────────────────► │   Demux Thread      │
+│  (Slint UI   │                                  │ (av_read_frame &    │
+│   thread)    │ ◄─────────────────────────────── │  av_seek_frame)     │
+│              │    Arc<Mutex<DecoderState>>      └───────┬──────┬──────┘
+│              │                                          │      │
+│              │    Arc<Mutex<Option<DecodedFrame>>>      │      │ video packet channel
+│              │ ◄────────────────────────────────────────│◄─────┘
+│              │                                          │
+│              │    Arc<Mutex<AudioShared>>               │ audio packet channel
+│              │ ────────────────────────────────────────►│
+│   16ms timer │                                          ▼
+│   (60 fps)   │                                  ┌─────────────────────┐
+└──────────────┘                                  │   Decode Threads    │
+                                                  │   (video & audio)   │
+                                                  └──────────┬──────────┘
+                                                             │ AudioShared.buffer
+                                                  ┌──────────▼──────────┐
+                                                  │  SDL AudioCallback  │
+                                                  │  (audio hw thread)  │
+                                                  └─────────────────────┘
 ```
 
 ### Key Shared State
 
 | Type | Owner | Consumers | Purpose |
 |---|---|---|---|
-| `Arc<Mutex<DecoderCommand>>` | `main.rs` | decoder thread | Seek target, play/pause, quit, speed |
-| `Arc<Mutex<DecoderState>>` | decoder thread | `main.rs` timer | Current PTS position, duration, playing |
-| `Arc<Mutex<Option<DecodedFrame>>>` | decoder thread | `main.rs` timer | Latest RGB frame (overwritten each frame) |
-| `Arc<Mutex<AudioShared>>` | `main.rs` | audio decode + SDL | Volume, playing, buffer, seek_to |
+| `Arc<Mutex<DecoderCommand>>` | `main.rs` | Demux thread | Seek target, play/pause, quit, load_file, speed |
+| `Arc<Mutex<DecoderState>>` | Demux / Video | `main.rs` timer | Current PTS position, duration, playing |
+| `Arc<Mutex<Option<DecodedFrame>>>` | Video decode | `main.rs` timer | Latest RGB frame (overwritten each frame) |
+| `Arc<Mutex<AudioShared>>` | `main.rs` | Audio decode + SDL | Volume, playing, buffer, seek_to |
+| Channels (`crossbeam` / `mpsc`) | Demux thread | Decode threads | Bounded packet transmission (av_packet) |
 
 ---
 
@@ -55,8 +61,9 @@
 | Thread | Who spawns it | What it does |
 |---|---|---|
 | **Slint UI thread** | OS (main) | Runs the event loop, 16ms timer, all callbacks |
-| **Video decode thread** | `Decoder::start()` | Reads video packets → decodes → scales → writes `DecodedFrame` |
-| **Audio decode thread** | `AudioOutput::start()` | Reads audio packets → decodes → resamples → pushes to `AudioShared.buffer` |
+| **Demux thread** | `Decoder::start()` | Opens file ONE TIME, reads packets, pushes to channels. Handles seeking. |
+| **Video decode thread** | `Decoder::start()` | Pulls video packets from channel → decodes → scales → writes `DecodedFrame` |
+| **Audio decode thread** | `AudioOutput::start()`| Pulls audio packets from channel → decodes → resamples → pushes to `AudioShared.buffer` |
 | **SDL audio hw thread** | SDL2 | Pulls from `AudioShared.buffer` → applies volume → outputs to hardware |
 
 > ⚠️ **Never call Slint APIs from non-UI threads.** Use `app_weak.upgrade()` only inside the Slint timer callback or callbacks registered with `app.on_*()`.
@@ -65,50 +72,53 @@
 
 ## Coding Rules
 
-### General
+### Memory & Performance Rules (CRITICAL)
 
-1. **No `unwrap()` on locks in the SDL callback.** The SDL callback runs on a real-time audio thread. A poisoned lock will silently corrupt audio. Use `.try_lock()` with a fallback to silence.
-2. **Never hold two locks simultaneously** without a strict lock-ordering convention (audio_shared < decoder_cmd < decoder_state) to prevent deadlock.
-3. **Frame overwrite is intentional.** `frame_out` holds only the latest decoded frame. The UI timer takes it with `.take()`. Do not turn this into a queue without adding back-pressure.
-4. **Audio buffer back-pressure is capped at 5 seconds.** The audio decode thread sleeps when `buffer.len() >= 44100 * 2 * 5`. Do not raise this limit; it inflates RAM and worsens seek latency.
-5. **All UI state mutations must happen on the Slint thread.** Use `slint::invoke_from_event_loop` if you ever need to update UI from another thread.
+1. **SINGLE DEMUXER ONLY.** Never call `avformat_open_input` in multiple threads for the same file. MP4 `moov` atoms (indexes) scale linearly with video duration and can easily consume 50-100MB per file handle. Doubling this by opening the file twice causes massive RAM bloat.
+2. **Limit FFmpeg Threads.** Always set `codec_ctx.thread_count = 1`. Allowing FFmpeg to spin up threads per CPU core causes unnecessary memory overhead.
+3. **Limit Probe Buffering.** Always pass `probesize=32000` and `analyzeduration=0` to `avformat_open_input` to stop FFmpeg from over-buffering megabytes of packets just to find stream info.
+4. **Bounded Channels & Backpressure.** Video and audio packet channels must be tightly bounded (e.g., 10-20 packets) so the demux thread sleeps when the decoders fall behind. The audio PCM buffer must be strictly capped at `2 seconds` (`44100 * 2 * 2`).
+5. **UI Renderer:** Always default to `winit-femtovg` backend for Slint, as it avoids Skia's massive RAM consumption on X11 environments.
+
+### General & Synchronization
+
+6. **No `unwrap()` on locks in the SDL callback.** The SDL callback runs on a real-time audio thread. Use `.try_lock()` with a fallback to silence.
+7. **Lock Ordering.** Never hold two locks simultaneously without a strict lock-ordering convention (audio_shared < decoder_cmd < decoder_state) to prevent deadlock.
+8. **Frame overwrite is intentional.** `frame_out` holds only the latest decoded frame. The UI timer takes it with `.take()`.
+9. **All UI state mutations must happen on the Slint thread.** Use `slint::invoke_from_event_loop` if needed.
 
 ### Slint Rules
 
-6. **Do not use `.clamp()` in Slint.** It is a Rust method, not a Slint builtin. Use `max(0, min(1, expr))` instead.
-7. **Do not use `float == float` for speed comparisons in Slint.** Floating-point equality is unreliable. Use integer-keyed speed variants or an epsilon check if comparing dynamically set values.
-8. **Keep `.slint` files in `ui/`.** Never generate Slint code from Rust strings at runtime.
-9. **The `Controls` component owns no mutable state** except `speed-open` (popup visibility). All other state flows down as `in-out property` from `AppWindow`.
-10. **`block-slider-update`** must be set to `true` before programmatically changing `slider-value`, then immediately set back to `false`. Failing to do so triggers a seek feedback loop.
-11. **`pointer-event-transparent` does not exist on `TouchArea`** in Slint 1.x. There is no pass-through overlay primitive — use `enabled: false` (which also disables `has_hover`) or restructure the z-order instead.
-12. **`has_hover` uses an underscore, not a hyphen.** The correct property is `ta.has_hover` not `ta.has-hover`. Hyphen will compile but reference the wrong property.
-13. **`TouchArea.moved` only fires while a mouse button is pressed (drag).** To detect free mouse movement (hover/scrub without clicking), use `pointer-event(evt) => { if evt.kind == PointerEventKind.move { ... } }` instead. Failing to do this means controls will never restore opacity after idle fade when the user just moves their mouse.
+10. **Do not use `.clamp()` in Slint.** It is a Rust method. Use `max(0, min(1, expr))` instead.
+11. **Do not use `float == float` for speed comparisons in Slint.** Floating-point equality is unreliable.
+12. **Keep `.slint` files in `ui/`.** Never generate Slint code from Rust strings at runtime.
+13. **`block-slider-update`** must be set to `true` before programmatically changing `slider-value`, then immediately set back to `false`.
+14. **`pointer-event-transparent` does not exist on `TouchArea`** in Slint 1.x. Use `enabled: false`.
+15. **`has_hover` uses an underscore, not a hyphen.** 
+16. **`TouchArea.moved` only fires while a mouse button is pressed (drag).** To detect free mouse movement, use `pointer-event(evt) => { if evt.kind == PointerEventKind.move { ... } }`.
 
-### Decoder Rules
+### Decoder & Seek Rules
 
-11. **Frame-pacing anchor (`wall_start`, `pts_start`) must be reset on every seek.** Forgetting this causes the decoder to sleep for minutes after a backward seek.
-12. **`pause_elapsed` must accumulate paused time** so that frame-pacing doesn't drift after a pause/resume cycle.
-13. **`seek_target` must be checked at the top of every packet loop iteration**, not only for video packets. Non-video packet branches previously caused seek commands to be silently dropped.
-14. **Skip frames with invalid PTS** (`i64::MIN` or `i64::MAX`). Do not attempt to use them for frame-pacing or position tracking.
-15. **Speed scaling:** divide `pts_elapsed` by `speed` before comparing to `real_elapsed`. Speed = 0.0 is handled as 1.0 to avoid division-by-zero.
+17. **Seek Workflow:** Demux thread receives seek target -> flushes packet channels -> calls `av_seek_frame` -> sends "Flush" signal packet to decoder threads. Decoder threads call `avcodec_flush_buffers` when they receive the flush signal.
+18. **Frame-pacing anchor must be reset on every seek.**
+19. **Skip frames with invalid PTS** (`i64::MIN` or `i64::MAX`). 
+20. **Speed scaling:** divide `pts_elapsed` by `speed` before comparing to `real_elapsed`.
 
 ### Audio Rules
 
-16. **On seek: flush codec buffers AND clear `AudioShared.buffer`.** Leaving stale samples in the buffer causes permanent A/V desync after seeking.
-17. **On pause: SDL callback outputs silence.** The decode thread also yields. Do not drain the buffer while paused; resuming would restart from the wrong position.
-18. **Volume is applied in the SDL callback**, not at encode time. Raw f32 samples in `buffer` are always `[-1.0, 1.0]` (pre-volume).
-19. **Audio seek uses `audio_tb` (audio stream time base)**, not the video stream time base. Always use the correct time base for the stream being seeked.
+21. **On pause: SDL callback outputs silence.** Do not drain the PCM buffer while paused.
+22. **Volume is applied in the SDL callback**, not at encode time. Raw f32 samples in `buffer` are always `[-1.0, 1.0]`.
+23. **Audio seek uses `audio_tb` (audio stream time base).**
 
 ---
 
-## Known Limitations (Do Not "Fix" Without Reading This)
+## Known Limitations
 
 | Issue | Why not fixed | Notes |
 |---|---|---|
 | No A/V sync master clock | Requires audio-clock-driven video sync (PTS drift correction) | Current approach: video paces itself via PTS; audio is eventually consistent after seek |
 | Speed > 1× audio pitch | `atempo` FFmpeg filter required | SDL doesn't support pitch-shifting; speed only affects video frame pacing |
 | No subtitle support | Out of scope | Would need a separate subtitle demux + render layer |
-| Window is decorated | OS title bar provides close/min/max | Do NOT re-add those buttons to the controls bar |
 | Single file only | No playlist/queue | `args[1]` is the only input |
 
 ---
@@ -119,10 +129,7 @@
 # Debug build
 cargo build
 
-# Run with a video file
-cargo run -- path/to/video.mp4
-
-# Release (optimized)
+# Release (optimized for size & speed)
 cargo build --release
 ./target/release/ohhplayer path/to/video.mp4
 ```
@@ -133,32 +140,18 @@ cargo build --release
 
 ---
 
-## Keyboard Shortcuts
-
-| Key | Action |
-|---|---|
-| `Space` | Play / Pause |
-| `f` / `F` | Toggle fullscreen |
-| `j` | Seek −10 s |
-| `l` | Seek +10 s |
-| `,` | Seek −5 s |
-| `.` | Seek +5 s |
-
----
-
 ## File Structure
 
 ```
 ohhPlayer/
 ├── src/
 │   ├── main.rs        # Entry point, Slint callbacks, UI timer
-│   ├── decoder.rs     # Video decode thread, frame-pacing, seek
-│   ├── audio.rs       # Audio decode thread, SDL playback, AudioShared
+│   ├── decoder/       # Demuxer, video decode, channels, frame-pacing
+│   ├── audio/         # Audio decode thread, SDL playback, AudioShared
 │   └── ui_state.rs    # Opacity/animation helpers, time formatting
 ├── ui/
 │   ├── appwindow.slint  # Root window, property routing
-│   ├── controls.slint   # Bottom controls bar (seek, volume, speed, fullscreen)
-│   └── center-button.slint  # Center play/pause overlay button
+│   └── ...
 ├── build.rs           # Slint build script
 ├── Cargo.toml
 └── AGENTS.md          # ← You are here
@@ -171,11 +164,8 @@ ohhPlayer/
 Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
-feat: add subtitle support
+feat: add single demuxer thread
 fix: reset frame-pacing anchor on seek
 refactor: consolidate audio state into AudioShared
 perf: reduce audio buffer cap from 10s to 5s
-docs: update AGENTS.md with audio rules
 ```
-
-Never commit a build that fails `cargo build` or has `#[allow(unused)]` masking real bugs.

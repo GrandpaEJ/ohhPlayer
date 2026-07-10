@@ -1,20 +1,22 @@
 export component SkipButton inherits Rectangle {
-    in property <string> icon-text;
+    in property <bool> is-forward;
     in property <string> duration-text;
     callback clicked;
     callback controls-moved;
 
-    width: 34px; height: 36px;
+    width: 40px; height: 40px;
     border-radius: 6px;
     background: skip-ta.has_hover ? rgba(255,255,255,0.14) : rgba(255,255,255,0.0);
     animate background { duration: 120ms; }
 
-    Text {
-        text: root.icon-text;
-        color: rgba(255,255,255,0.75);
-        font-size: 18px;
-        x: (parent.width - self.preferred-width) / 2;
-        y: (parent.height - self.preferred-height) / 2;
+    Path {
+        width: 22px; height: 16px;
+        fill: rgba(255,255,255,0.75);
+        commands: root.is-forward 
+            ? "M 1 1 L 10 8 L 1 15 Z M 11 1 L 20 8 L 11 15 Z" 
+            : "M 10 1 L 1 8 L 10 15 Z M 20 1 L 11 8 L 20 15 Z";
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 - 4px;
     }
     Text {
         text: root.duration-text;
