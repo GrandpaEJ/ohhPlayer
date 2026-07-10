@@ -21,7 +21,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
             av_dict_free(&mut opts);
             
             if ret < 0 {
-                eprintln!("audio: cannot open '{}'", current_path);
+                crate::app_log!("audio: cannot open '{}'", current_path);
                 loop {
                     let mut s = shared.lock().unwrap();
                     if s.quit { return; }
@@ -32,7 +32,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
                 continue;
             }
             if avformat_find_stream_info(fmt_ctx, ptr::null_mut()) < 0 {
-                eprintln!("audio: cannot find stream info");
+                crate::app_log!("audio: cannot find stream info");
                 avformat_close_input(&mut fmt_ctx);
                 loop {
                     let mut s = shared.lock().unwrap();
@@ -129,7 +129,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
             ptr::null_mut(),
         );
         if ret < 0 || swr.is_null() {
-            eprintln!("audio: cannot create resampler");
+            crate::app_log!("audio: cannot create resampler");
             avcodec_free_context(&mut codec_ctx);
             avformat_close_input(&mut fmt_ctx);
             loop {

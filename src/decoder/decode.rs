@@ -29,7 +29,7 @@ pub(crate) fn decode_video(
             av_dict_free(&mut opts);
             
             if ret < 0 {
-                eprintln!("decoder: cannot open '{}'", current_path);
+                crate::app_log!("decoder: cannot open '{}'", current_path);
                 // Wait for a new file command
                 loop {
                     let mut c = command.lock().unwrap();
@@ -44,7 +44,7 @@ pub(crate) fn decode_video(
                 continue;
             }
             if avformat_find_stream_info(fmt_ctx, ptr::null_mut()) < 0 {
-                eprintln!("decoder: cannot find stream info");
+                crate::app_log!("decoder: cannot find stream info");
                 avformat_close_input(&mut fmt_ctx);
                 // Wait for a new file command
                 loop {
@@ -71,7 +71,7 @@ pub(crate) fn decode_video(
             }
         }
         if video_idx < 0 {
-            eprintln!("decoder: no video stream");
+            crate::app_log!("decoder: no video stream");
             avformat_close_input(&mut fmt_ctx);
             loop {
                 let mut c = command.lock().unwrap();
@@ -97,7 +97,7 @@ pub(crate) fn decode_video(
 
         let codec = avcodec_find_decoder((*vs.codecpar).codec_id);
         if codec.is_null() {
-            eprintln!("decoder: codec not found");
+            crate::app_log!("decoder: codec not found");
             avformat_close_input(&mut fmt_ctx);
             loop {
                 let mut c = command.lock().unwrap();
@@ -111,7 +111,7 @@ pub(crate) fn decode_video(
 
         let mut codec_ctx = avcodec_alloc_context3(codec);
         if codec_ctx.is_null() {
-            eprintln!("decoder: cannot alloc codec context");
+            crate::app_log!("decoder: cannot alloc codec context");
             avformat_close_input(&mut fmt_ctx);
             loop {
                 let mut c = command.lock().unwrap();
@@ -125,7 +125,7 @@ pub(crate) fn decode_video(
         avcodec_parameters_to_context(codec_ctx, vs.codecpar);
         (*codec_ctx).thread_count = 1; // Limit threads to save RAM
         if avcodec_open2(codec_ctx, codec, ptr::null_mut()) < 0 {
-            eprintln!("decoder: cannot open codec");
+            crate::app_log!("decoder: cannot open codec");
             avcodec_free_context(&mut codec_ctx);
             avformat_close_input(&mut fmt_ctx);
             loop {
@@ -160,7 +160,7 @@ pub(crate) fn decode_video(
             ptr::null_mut(),
         );
         if sws_ctx.is_null() {
-            eprintln!("decoder: cannot create scaler");
+            crate::app_log!("decoder: cannot create scaler");
             avcodec_free_context(&mut codec_ctx);
             avformat_close_input(&mut fmt_ctx);
             loop {

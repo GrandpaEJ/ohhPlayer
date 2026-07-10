@@ -7,6 +7,7 @@ import { TopMenu } from "./top-menu.slint";
 import { RecentFilesOverlay, RecentFile } from "./recent-files.slint";
 import { KeyboardHelpOverlay } from "./keyboard-help.slint";
 import { OsdOverlay } from "./osd.slint";
+import { LogsOverlay } from "./logs-overlay.slint";
 
 export component AppWindow inherits Window {
     title: "ohhPlayer";
@@ -37,6 +38,8 @@ export component AppWindow inherits Window {
     in-out property <bool>   keyboard-help-open: false;
     in-out property <string> osd-text: "";
     in-out property <float>  osd-opacity: 0.0;
+    in-out property <bool>   logs-open: false;
+    in property <[string]>   log-lines;
 
     forward-focus: my_kb;
     always-on-top: root.my-always-on-top;
@@ -193,6 +196,7 @@ export component AppWindow inherits Window {
                     controls-opacity: root.controls-opacity;
                     open-file => { root.open-file(); }
                     open-recent => { root.recent-menu-open = true; }
+                    show-logs => { root.logs-open = true; }
                     controls-moved => { root.controls-moved(); }
                 }
 
@@ -236,6 +240,12 @@ export component AppWindow inherits Window {
                 OsdOverlay {
                     text: root.osd-text;
                     osd-opacity: root.osd-opacity;
+                }
+
+                if root.logs-open : LogsOverlay {
+                    x: 0; y: 0;
+                    logs: root.log-lines;
+                    close-logs => { root.logs-open = false; }
                 }
 
             }

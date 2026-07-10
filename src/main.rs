@@ -3,6 +3,8 @@ mod audio;
 mod decoder;
 mod ui_state;
 mod settings;
+#[macro_use]
+pub mod logger;
 
 slint::include_modules!();
 
@@ -52,6 +54,8 @@ pub fn get_history_model() -> slint::ModelRc<RecentFile> {
 }
 
 fn main() {
+    logger::init_ffmpeg_log();
+
     // Force the femtovg backend by default to drastically reduce RAM usage compared to Skia
     if std::env::var("SLINT_BACKEND").is_err() {
         std::env::set_var("SLINT_BACKEND", "winit-femtovg");

@@ -491,6 +491,16 @@ pub fn setup_callbacks(
                 ds.2 = slint::SharedString::from(format!("{:>4.1} FPS  | {:>5.1} MB", fps, ram_mb));
             }
             a.set_debug_text(ds.2.clone());
+
+            // ── Update Logs if Overlay is open ───────────────────────────────
+            if a.get_logs_open() {
+                let logs = crate::logger::global_logs().lock().unwrap();
+                let mut lines = Vec::new();
+                for log in logs.iter() {
+                    lines.push(slint::SharedString::from(log));
+                }
+                a.set_log_lines(slint::ModelRc::new(slint::VecModel::from(lines)));
+            }
         },
     );
 
