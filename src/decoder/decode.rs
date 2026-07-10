@@ -21,7 +21,14 @@ pub(crate) fn decode_video(
             let path_c = CString::new(current_path.clone()).unwrap();
             let mut fmt_ctx: *mut AVFormatContext = ptr::null_mut();
 
-            if avformat_open_input(&mut fmt_ctx, path_c.as_ptr(), ptr::null_mut(), ptr::null_mut()) < 0 {
+            let mut opts: *mut AVDictionary = ptr::null_mut();
+            av_dict_set(&mut opts, CString::new("probesize").unwrap().as_ptr(), CString::new("32000").unwrap().as_ptr(), 0);
+            av_dict_set(&mut opts, CString::new("analyzeduration").unwrap().as_ptr(), CString::new("0").unwrap().as_ptr(), 0);
+            
+            let ret = avformat_open_input(&mut fmt_ctx, path_c.as_ptr(), ptr::null_mut(), &mut opts);
+            av_dict_free(&mut opts);
+            
+            if ret < 0 {
                 eprintln!("decoder: cannot open '{}'", current_path);
                 // Wait for a new file command
                 loop {
@@ -58,8 +65,9 @@ pub(crate) fn decode_video(
         let mut video_idx = -1i32;
         for (i, &s) in streams.iter().enumerate() {
             if (*(*s).codecpar).codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO {
-                video_idx = i as i32;
-                break;
+                if video_idx < 0 { video_idx = i as i32; }
+            } else {
+                (*s).discard = AVDiscard::AVDISCARD_ALL;
             }
         }
         if video_idx < 0 {
@@ -115,6 +123,7 @@ pub(crate) fn decode_video(
             continue;
         }
         avcodec_parameters_to_context(codec_ctx, vs.codecpar);
+        (*codec_ctx).thread_count = 1; // Limit threads to save RAM
         if avcodec_open2(codec_ctx, codec, ptr::null_mut()) < 0 {
             eprintln!("decoder: cannot open codec");
             avcodec_free_context(&mut codec_ctx);

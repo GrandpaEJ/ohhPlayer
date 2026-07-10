@@ -13,7 +13,14 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
             let path_c = CString::new(current_path.clone()).unwrap();
             let mut fmt_ctx: *mut AVFormatContext = ptr::null_mut();
 
-            if avformat_open_input(&mut fmt_ctx, path_c.as_ptr(), ptr::null_mut(), ptr::null_mut()) < 0 {
+            let mut opts: *mut AVDictionary = ptr::null_mut();
+            av_dict_set(&mut opts, CString::new("probesize").unwrap().as_ptr(), CString::new("32000").unwrap().as_ptr(), 0);
+            av_dict_set(&mut opts, CString::new("analyzeduration").unwrap().as_ptr(), CString::new("0").unwrap().as_ptr(), 0);
+            
+            let ret = avformat_open_input(&mut fmt_ctx, path_c.as_ptr(), ptr::null_mut(), &mut opts);
+            av_dict_free(&mut opts);
+            
+            if ret < 0 {
                 eprintln!("audio: cannot open '{}'", current_path);
                 loop {
                     let mut s = shared.lock().unwrap();
@@ -42,8 +49,9 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
         let mut audio_idx = -1i32;
         for (i, &s) in streams.iter().enumerate() {
             if (*(*s).codecpar).codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO {
-                audio_idx = i as i32;
-                break;
+                if audio_idx < 0 { audio_idx = i as i32; }
+            } else {
+                (*s).discard = AVDiscard::AVDISCARD_ALL;
             }
         }
         if audio_idx < 0 {
@@ -86,6 +94,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
             continue;
         }
         avcodec_parameters_to_context(codec_ctx, as_.codecpar);
+        (*codec_ctx).thread_count = 1; // Limit threads to save RAM
         if avcodec_open2(codec_ctx, codec, ptr::null_mut()) < 0 {
             avcodec_free_context(&mut codec_ctx);
             avformat_close_input(&mut fmt_ctx);
@@ -173,8 +182,8 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
                 }
 
                 // Don't over-buffer — apply back-pressure so RAM stays bounded
-                // 44100 samples/sec × 2 ch × 5 sec headroom
-                if s.buffer.len() >= 44100 * 2 * 5 {
+                // 44100 samples/sec × 2 ch × 2 sec headroom
+                if s.buffer.len() >= 44100 * 2 * 2 {
                     drop(s);
                     std::thread::sleep(std::time::Duration::from_millis(20));
                     continue;

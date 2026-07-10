@@ -52,6 +52,11 @@ pub fn get_history_model() -> slint::ModelRc<RecentFile> {
 }
 
 fn main() {
+    // Force the femtovg backend by default to drastically reduce RAM usage compared to Skia
+    if std::env::var("SLINT_BACKEND").is_err() {
+        std::env::set_var("SLINT_BACKEND", "winit-femtovg");
+    }
+
     unsafe { libc::signal(libc::SIGINT, sigint as *const () as libc::sighandler_t); }
     let app      = AppWindow::new().unwrap();
     let app_weak = app.as_weak();
