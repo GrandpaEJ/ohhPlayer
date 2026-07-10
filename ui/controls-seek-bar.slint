@@ -43,13 +43,13 @@ export component SeekBar {
     }
     // Thumb — pops and scales up on hover/press
     Rectangle {
-        x: parent.width * root.slider-value - (seek-ta.has_hover || seek-ta.pressed ? 7px : 0px);
-        y: (parent.height - (seek-ta.has_hover || seek-ta.pressed ? 14px : 0px)) / 2;
-        width: seek-ta.has_hover || seek-ta.pressed ? 14px : 0px;
-        height: seek-ta.has_hover || seek-ta.pressed ? 14px : 0px;
-        border-radius: seek-ta.has_hover || seek-ta.pressed ? 7px : 0px;
+        x: parent.width * root.slider-value - (seek-ta.has_hover || seek-ta.pressed ? 7px : 4px);
+        y: (parent.height - (seek-ta.has_hover || seek-ta.pressed ? 14px : 8px)) / 2;
+        width: seek-ta.has_hover || seek-ta.pressed ? 14px : 8px;
+        height: seek-ta.has_hover || seek-ta.pressed ? 14px : 8px;
+        border-radius: seek-ta.has_hover || seek-ta.pressed ? 7px : 4px;
         background: #fff;
-        opacity: seek-ta.has_hover || seek-ta.pressed ? 1.0 : 0.0;
+        opacity: 1.0;
         drop-shadow-blur: 6px;
         drop-shadow-color: rgba(167, 139, 250, 0.5);
         animate width, height, x, y, border-radius, opacity { duration: 150ms; easing: cubic-bezier(0.175, 0.885, 0.32, 1.275); } // bouncy cubic-bezier
