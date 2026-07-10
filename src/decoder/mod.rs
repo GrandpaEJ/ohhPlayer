@@ -5,6 +5,8 @@ pub use types::{DecodedFrame, DecoderCommand, DecoderState};
 
 use std::sync::{Arc, Mutex};
 
+use crate::audio::AudioShared;
+
 pub struct Decoder {
     command: Arc<Mutex<DecoderCommand>>,
     state:   Arc<Mutex<DecoderState>>,
@@ -24,13 +26,13 @@ impl Decoder {
     pub fn state(&self)   -> Arc<Mutex<DecoderState>>   { self.state.clone()   }
     pub fn frame(&self)   -> Arc<Mutex<Option<DecodedFrame>>> { self.frame.clone() }
 
-    pub fn start(&self, path: &str, target_w: u32, target_h: u32) {
+    pub fn start(&self, path: &str, target_w: u32, target_h: u32, audio_shared: Arc<Mutex<AudioShared>>) {
         let cmd   = self.command.clone();
         let state = self.state.clone();
         let frame = self.frame.clone();
         let path  = path.to_owned();
         std::thread::spawn(move || {
-            decode::decode_video(&path, target_w, target_h, cmd, state, frame);
+            decode::decode_video(&path, target_w, target_h, cmd, state, frame, audio_shared);
         });
     }
 }

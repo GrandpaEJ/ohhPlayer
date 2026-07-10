@@ -9,17 +9,20 @@ pub struct AudioShared {
     pub seek_to:  Option<f64>,
     pub quit:     bool,
     pub load_file: Option<String>,
+    /// Audio playback position in seconds (master clock for A/V sync).
+    pub audio_position_secs: f64,
 }
 
 impl AudioShared {
     pub(crate) fn new() -> Self {
         Self {
-            buffer:  VecDeque::new(),
-            volume:  0.8,
-            playing: true,
-            seek_to: None,
-            quit:    false,
+            buffer:   VecDeque::new(),
+            volume:   0.8,
+            playing:  true,
+            seek_to:  None,
+            quit:     false,
             load_file: None,
+            audio_position_secs: 0.0,
         }
     }
 }

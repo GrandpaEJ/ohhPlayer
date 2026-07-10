@@ -3,6 +3,7 @@ use std::ptr;
 use std::sync::{Arc, Mutex};
 
 use super::{DecodedFrame, DecoderCommand, DecoderState};
+use crate::audio::AudioShared;
 
 pub(crate) fn decode_video(
     path: &str,
@@ -11,6 +12,7 @@ pub(crate) fn decode_video(
     command:   Arc<Mutex<DecoderCommand>>,
     state:     Arc<Mutex<DecoderState>>,
     frame_out: Arc<Mutex<Option<DecodedFrame>>>,
+    audio_shared: Arc<Mutex<AudioShared>>,
 ) {
     use ffmpeg_sys_next::*;
     unsafe {
@@ -170,11 +172,6 @@ pub(crate) fn decode_video(
         let mut do_seek  = false;
         let mut seek_ts: i64 = 0;
 
-        // ── Frame-pacing state ─────────────────────────────────────────────
-        let mut wall_start:    Option<std::time::Instant> = None;
-        let mut pts_start:     f64 = 0.0;
-        let mut pause_elapsed: f64 = 0.0;
-        let mut pause_since:   Option<std::time::Instant> = None;
         let mut skip_to_pts:   Option<f64> = None;
 
         loop {
@@ -200,15 +197,8 @@ pub(crate) fn decode_video(
                 state.lock().unwrap().playing = playing;
 
                 if !playing {
-                    // Bug #3 fix: properly track pause duration for frame-pacing
-                    if pause_since.is_none() {
-                        pause_since = Some(std::time::Instant::now());
-                    }
                     std::thread::sleep(std::time::Duration::from_millis(8));
                     continue;
-                } else if let Some(ps) = pause_since.take() {
-                    // Resumed — accumulate the pause gap so timing stays correct
-                    pause_elapsed += ps.elapsed().as_secs_f64();
                 }
             }
 
@@ -217,10 +207,6 @@ pub(crate) fn decode_video(
                 av_seek_frame(fmt_ctx, video_idx, seek_ts, AVSEEK_FLAG_BACKWARD);
                 avcodec_flush_buffers(codec_ctx);
                 do_seek = false;
-                // Bug #2 fix: reset frame-pacing anchor so we don't sleep forever
-                wall_start    = None;
-                pause_elapsed = 0.0;
-                pause_since   = None;
             }
 
             let ret = av_read_frame(fmt_ctx, pkt);
@@ -257,41 +243,30 @@ pub(crate) fn decode_video(
 
                 state.lock().unwrap().position = frame_pts;
 
-                // ── Bug #2 fix: PTS-based frame pacing ────────────────────
-                // Anchor on the first frame presented after a start/seek.
-                if wall_start.is_none() {
-                    wall_start = Some(std::time::Instant::now());
-                    pts_start  = frame_pts;
+                // ── A/V sync: use audio position as master clock ──────────
+                let (audio_pos, spd) = {
+                    let a = audio_shared.lock().unwrap();
+                    let c = command.lock().unwrap();
+                    (a.audio_position_secs, c.speed as f64)
+                };
+                let effective_pos = if spd > 0.0 { audio_pos * spd } else { audio_pos };
+
+                if frame_pts < effective_pos - 0.3 {
+                    // Video is far behind audio — skip this frame to catch up
+                    av_frame_unref(frame);
+                    continue;
                 }
-                let wall = wall_start.unwrap();
-                // How long since playback anchor (minus paused time)
-                let real_elapsed = wall.elapsed().as_secs_f64() - pause_elapsed;
-                // How far into the stream this frame lives
-                let pts_elapsed  = frame_pts - pts_start;
 
-                if pts_elapsed < 0.0 {
-                    // PTS went backwards or wrapped, reset anchor to resync
-                    wall_start = None;
-                    pause_elapsed = 0.0;
-                    pause_since = None;
-                } else {
-                    // Speed factor from command (read fresh for accuracy)
-                    let spd = command.lock().unwrap().speed as f64;
-                    let adjusted_pts = if spd > 0.0 { pts_elapsed / spd } else { pts_elapsed };
-
-                    if adjusted_pts > real_elapsed {
-                        let mut sleep_ms = ((adjusted_pts - real_elapsed) * 1000.0) as i64;
-                        // Sleep in chunks so the thread remains responsive during long frame holds
-                        while sleep_ms > 0 {
-                            let chunk = if sleep_ms > 20 { 20 } else { sleep_ms };
-                            std::thread::sleep(std::time::Duration::from_millis(chunk as u64));
-                            sleep_ms -= chunk;
-                            
-                            // Wake up early if user interacts
-                            let c = command.lock().unwrap();
-                            if c.quit || c.load_file.is_some() || c.seek_target.is_some() {
-                                break;
-                            }
+                if frame_pts > effective_pos + 0.005 {
+                    // Video is ahead of audio — sleep until audio catches up
+                    let mut sleep_ms = ((frame_pts - effective_pos) * 1000.0) as i64;
+                    while sleep_ms > 0 {
+                        let chunk = if sleep_ms > 20 { 20 } else { sleep_ms };
+                        std::thread::sleep(std::time::Duration::from_millis(chunk as u64));
+                        sleep_ms -= chunk;
+                        let c = command.lock().unwrap();
+                        if c.quit || c.load_file.is_some() || c.seek_target.is_some() {
+                            break;
                         }
                     }
                 }

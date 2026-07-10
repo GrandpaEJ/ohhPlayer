@@ -73,7 +73,7 @@ fn main() {
     if !start_path.is_empty() {
         save_to_history(&start_path);
     }
-    decoder.start(&start_path, 800, 424);
+    decoder.start(&start_path, 800, 424, audio_out.shared.clone());
     audio_out.start(&start_path);
 
     // Apply initial resume position if applicable

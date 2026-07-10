@@ -157,6 +157,8 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
                     avcodec_flush_buffers(codec_ctx);
                     // Clear audio buffer to eliminate stale samples causing A/V desync
                     s.buffer.clear();
+                    // Reset audio position to seek target (master clock for A/V sync)
+                    s.audio_position_secs = target;
                     let seek_ts = (target * audio_tb.den as f64 / audio_tb.num as f64) as i64;
                     drop(s);
                     av_seek_frame(fmt_ctx, audio_idx, seek_ts, AVSEEK_FLAG_BACKWARD);
@@ -233,8 +235,14 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
                 if converted > 0 {
                     let total   = (converted * 2) as usize;
                     let samples = std::slice::from_raw_parts(dst_buf as *const f32, total);
+                    let mut s = shared.lock().unwrap();
+                    // Sync audio position to actual frame PTS when buffer was empty
+                    // (after seek or buffer drain) to correct seek-keyframe misalignment
+                    if s.buffer.is_empty() && frame_pts >= 0.0 && s.audio_position_secs < frame_pts {
+                        s.audio_position_secs = frame_pts;
+                    }
                     // Note: volume applied at playback time in AudioCallback, not here
-                    shared.lock().unwrap().buffer.extend(samples.iter());
+                    s.buffer.extend(samples.iter());
                 }
 
                 av_free(dst_buf as *mut libc::c_void);
