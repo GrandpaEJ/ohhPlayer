@@ -191,7 +191,11 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
             }
 
             if av_read_frame(fmt_ctx, pkt) < 0 { 
-                shared.lock().unwrap().playing = false;
+                // Reached EOF for audio. Do not set playing = false, because the video thread
+                // relies on the audio master clock to pace itself. If we pause the audio clock,
+                // the video thread will freeze and cause severe lag.
+                // Just sleep and wait for a seek or a new file.
+                std::thread::sleep(std::time::Duration::from_millis(50));
                 continue; 
             }
 

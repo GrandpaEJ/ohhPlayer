@@ -220,7 +220,9 @@ pub(crate) fn decode_video(
 
             let ret = av_read_frame(fmt_ctx, pkt);
             if ret < 0 { 
-                command.lock().unwrap().playing = false;
+                // Reached EOF for video. Do not instantly pause, because audio might still be playing
+                // and the user might want to seek.
+                std::thread::sleep(std::time::Duration::from_millis(50));
                 continue; 
             }
 
