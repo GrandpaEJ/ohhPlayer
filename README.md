@@ -70,7 +70,7 @@ Ensure you have the required system dependencies installed on your Linux machine
 ```bash
 # Ubuntu/Debian
 sudo apt update
-sudo apt install libavcodec-dev libavformat-dev libswscale-dev libswresample-dev libsdl2-dev clang pkg-config
+sudo apt install libavcodec-dev libavformat-dev libswscale-dev libswresample-dev libavfilter-dev libavutil-dev libavdevice-dev libsdl2-dev libfontconfig1-dev clang pkg-config
 ```
 
 ### Build & Run
