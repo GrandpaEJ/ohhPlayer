@@ -22,12 +22,13 @@ export component TopMenu {
         animate background { duration: 150ms; }
         animate opacity { duration: 300ms; }
 
-        Text {
-            text: "☰";
-            color: btn-ta.has_hover || menu-open ? #fff : rgba(255,255,255,0.7);
-            font-size: 16px;
-            x: (parent.width - self.preferred-width) / 2;
-            y: (parent.height - self.preferred-height) / 2;
+        Path {
+            width: 16px; height: 16px;
+            stroke: btn-ta.has_hover || menu-open ? #fff : rgba(255,255,255,0.7);
+            stroke-width: 1.5px;
+            commands: "M 2 4 L 14 4 M 2 8 L 14 8 M 2 12 L 14 12";
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
         }
 
         btn-ta := TouchArea {
@@ -65,7 +66,7 @@ export component TopMenu {
                 animate background { duration: 100ms; }
                 
                 Text {
-                    text: "📂 Open File...";
+                    text: "Open File...";
                     color: rgba(255, 255, 255, 0.9);
                     font-size: 13px;
                     vertical-alignment: center;
@@ -86,7 +87,7 @@ export component TopMenu {
                 animate background { duration: 100ms; }
                 
                 Text {
-                    text: "🕒 Recent";
+                    text: "Recent Files";
                     color: rgba(255, 255, 255, 0.9);
                     font-size: 13px;
                     vertical-alignment: center;
@@ -107,12 +108,12 @@ export component TopMenu {
                 animate background { duration: 100ms; }
                 
                 Text {
-                    text: root.scale-mode == 0 ? "🔲 Scale: Fit" :
-                          root.scale-mode == 1 ? "↔️ Scale: Stretch" :
-                          root.scale-mode == 2 ? "🔍 Scale: Zoom" :
-                          root.scale-mode == 3 ? "100% Original Size" :
-                          root.scale-mode == 4 ? "1:1 Forced Ratio" :
-                          root.scale-mode == 5 ? "16:9 Widescreen" : "9:16 Portrait";
+                    text: root.scale-mode == 0 ? "Scale: Fit" :
+                          root.scale-mode == 1 ? "Scale: Stretch" :
+                          root.scale-mode == 2 ? "Scale: Zoom" :
+                          root.scale-mode == 3 ? "Scale: 100%" :
+                          root.scale-mode == 4 ? "Scale: 1:1" :
+                          root.scale-mode == 5 ? "Scale: 16:9" : "Scale: 9:16";
                     color: rgba(255, 255, 255, 0.9);
                     font-size: 11px;
                     vertical-alignment: center;

@@ -168,14 +168,14 @@ export component AppWindow inherits Window {
                     animate background { duration: 150ms; }
                     animate opacity    { duration: 300ms; easing: ease-in-out; }
 
-                    Text {
-                        text: "✕";
-                        color: close-ta.has_hover ? #fff : rgba(255,255,255,0.55);
-                        font-size: 13px;
-                        font-weight: 600;
-                        x: (parent.width  - self.preferred-width)  / 2;
-                        y: (parent.height - self.preferred-height) / 2;
-                        animate color { duration: 150ms; }
+                    Path {
+                        width: 12px; height: 12px;
+                        stroke: close-ta.has_hover ? #fff : rgba(255,255,255,0.55);
+                        stroke-width: 1.5px;
+                        commands: "M 1 1 L 11 11 M 11 1 L 1 11";
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                        animate stroke { duration: 150ms; }
                     }
                     close-ta := TouchArea {
                         pointer-event(evt) => {

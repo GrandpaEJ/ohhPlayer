@@ -83,7 +83,7 @@ export component Controls {
 
                 // Skip −10 s
                 SkipButton {
-                    icon-text: "↺";
+                    is-forward: false;
                     duration-text: "10";
                     clicked => { root.seek-relative(-10); }
                     controls-moved => { root.controls-moved(); }
@@ -91,7 +91,7 @@ export component Controls {
 
                 // Skip +10 s
                 SkipButton {
-                    icon-text: "↻";
+                    is-forward: true;
                     duration-text: "10";
                     clicked => { root.seek-relative(10); }
                     controls-moved => { root.controls-moved(); }
@@ -125,12 +125,14 @@ export component Controls {
                     width: 32px; height: 32px; border-radius: 6px;
                     background: aot-ta.has_hover ? rgba(255,255,255,0.1) : transparent;
                     animate background { duration: 150ms; }
-                    Text {
-                        text: "📌";
-                        color: root.always-on-top ? #0cf : #ccc;
-                        font-size: 14px;
-                        horizontal-alignment: center;
-                        vertical-alignment: center;
+                    Path {
+                        width: 14px; height: 14px;
+                        stroke: root.always-on-top ? #0cf : #ccc;
+                        stroke-width: 1.5px;
+                        fill: transparent;
+                        commands: "M 5 2 L 9 2 L 9 4 L 10 6 L 10 9 L 8 9 L 8 14 L 7 14 L 7 9 L 4 9 L 4 6 L 5 4 Z";
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
                     }
                     aot-ta := TouchArea {
                         clicked => { root.always-on-top-toggled(); }
@@ -143,12 +145,14 @@ export component Controls {
                     width: 32px; height: 32px; border-radius: 6px;
                     background: sleep-ta.has_hover ? rgba(255,255,255,0.1) : transparent;
                     animate background { duration: 150ms; }
-                    Text {
-                        text: "🕒";
-                        color: root.sleep-timer-val > 0 ? #0cf : #ccc;
-                        font-size: 14px;
-                        horizontal-alignment: center;
-                        vertical-alignment: center;
+                    Path {
+                        width: 14px; height: 14px;
+                        stroke: root.sleep-timer-val > 0 ? #0cf : #ccc;
+                        stroke-width: 1.5px;
+                        fill: transparent;
+                        commands: "M 7 1 A 6 6 0 1 0 7.001 1 Z M 7 3 L 7 7 L 9 9";
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
                     }
                     sleep-ta := TouchArea {
                         clicked => { root.sleep-timer-open = !root.sleep-timer-open; root.speed-open = false; }

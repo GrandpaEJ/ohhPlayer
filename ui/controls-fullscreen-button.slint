@@ -8,12 +8,14 @@ export component FullscreenButton inherits Rectangle {
     background: fs-ta.has_hover ? rgba(255,255,255,0.14) : rgba(255,255,255,0.0);
     animate background { duration: 120ms; }
 
-    Text {
-        text: root.is-fullscreen ? "⊠" : "⛶";
-        color: rgba(255,255,255,0.75);
-        font-size: 16px;
-        x: (parent.width - self.preferred-width) / 2;
-        y: (parent.height - self.preferred-height) / 2;
+    Path {
+        width: 16px; height: 16px;
+        fill: rgba(255,255,255,0.75);
+        commands: root.is-fullscreen 
+            ? "M 5 5 L 1 5 L 1 4 L 4 4 L 4 1 L 5 1 Z M 11 5 L 15 5 L 15 4 L 12 4 L 12 1 L 11 1 Z M 5 11 L 1 11 L 1 12 L 4 12 L 4 15 L 5 15 Z M 11 11 L 15 11 L 15 12 L 12 12 L 12 15 L 11 15 Z" 
+            : "M 2 2 L 6 2 L 6 3 L 3 3 L 3 6 L 2 6 Z M 14 2 L 10 2 L 10 3 L 13 3 L 13 6 L 14 6 Z M 2 14 L 6 14 L 6 13 L 3 13 L 3 10 L 2 10 Z M 14 14 L 10 14 L 10 13 L 13 13 L 13 10 L 14 10 Z";
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
     }
     fs-ta := TouchArea {
         pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }

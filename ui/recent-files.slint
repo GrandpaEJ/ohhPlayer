@@ -48,11 +48,13 @@ export component RecentFilesOverlay inherits Rectangle {
                     TouchArea {
                         clicked => { root.close-clicked(); }
                     }
-                    Text {
-                        text: "✕";
-                        color: #aaa;
-                        font-size: 16px;
-                        horizontal-alignment: right;
+                    Path {
+                        width: 12px; height: 12px;
+                        stroke: #aaa;
+                        stroke-width: 1.5px;
+                        commands: "M 1 1 L 11 11 M 11 1 L 1 11";
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
                     }
                 }
             }
