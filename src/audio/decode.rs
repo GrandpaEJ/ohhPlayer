@@ -241,7 +241,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
                     swr,
                     &mut dst_buf as *mut *mut u8,
                     dst_nb,
-                    (*frame).extended_data as *const *const u8,
+                    (*frame).extended_data as *mut *const u8,
                     nb_samples,
                 );
 
