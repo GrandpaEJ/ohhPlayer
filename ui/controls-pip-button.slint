@@ -1,0 +1,48 @@
+export component PipButton {
+    in-out property <bool> is-pip;
+    callback clicked;
+    callback controls-moved;
+
+    width: 40px;
+    height: 40px;
+
+    Rectangle {
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        background: pip-ta.has_hover ? rgba(255, 255, 255, 0.12) : transparent;
+        animate background { duration: 150ms; }
+
+        // Outer window frame
+        Path {
+            width: 20px;
+            height: 16px;
+            stroke: root.is-pip ? #0cf : rgba(255, 255, 255, 0.85);
+            stroke-width: 1.5px;
+            fill: transparent;
+            commands: "M 2 2 L 18 2 L 18 14 L 2 14 Z";
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+        }
+
+        // Inner PiP window box (bottom-right sub-rectangle)
+        Rectangle {
+            x: (parent.width - 20px) / 2 + 10px;
+            y: (parent.height - 16px) / 2 + 7px;
+            width: 7px;
+            height: 5px;
+            background: root.is-pip ? #0cf : rgba(255, 255, 255, 0.85);
+            border-radius: 1px;
+            animate background { duration: 150ms; }
+        }
+
+        pip-ta := TouchArea {
+            pointer-event(evt) => {
+                if evt.kind == PointerEventKind.move { root.controls-moved(); }
+            }
+            clicked => {
+                root.clicked();
+            }
+        }
+    }
+}

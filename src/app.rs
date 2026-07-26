@@ -302,6 +302,37 @@ pub fn setup_callbacks(
         });
     }
 
+    // ── Picture-in-Picture (PiP) Mode ─────────────────────────────────────
+    {
+        let weak = app_weak.clone();
+        let set  = settings.clone();
+        let saved_size = Rc::new(RefCell::new((900u32, 520u32)));
+        app.on_pip_toggled(move || {
+            if let Some(w) = weak.upgrade() {
+                let is_pip = !w.get_is_pip();
+                w.set_is_pip(is_pip);
+                
+                if is_pip {
+                    // Enter PiP mode: shrink window, pin on top
+                    let size = w.window().size();
+                    if size.width > 360 && size.height > 200 {
+                        *saved_size.borrow_mut() = (size.width, size.height);
+                    }
+                    w.window().set_size(slint::PhysicalSize::new(360, 202));
+                    w.set_my_always_on_top(true);
+                    w.set_osd_text(slint::SharedString::from("PiP Mode Enabled"));
+                } else {
+                    // Exit PiP mode: restore saved size & original always-on-top state
+                    let (sw, sh) = *saved_size.borrow();
+                    w.window().set_size(slint::PhysicalSize::new(sw, sh));
+                    w.set_my_always_on_top(set.borrow().always_on_top);
+                    w.set_osd_text(slint::SharedString::from("PiP Mode Disabled"));
+                }
+                w.set_osd_opacity(1.0);
+            }
+        });
+    }
+
     // ── Scale Mode ────────────────────────────────────────────────────────
     {
         let set = settings.clone();

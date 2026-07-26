@@ -1,5 +1,6 @@
 export component VolumeControl {
     in-out property <float> volume-level;
+    in property <bool> compact: false;
     callback volume-toggled;
     callback volume-changed(float);
     callback controls-moved;
@@ -31,8 +32,8 @@ export component VolumeControl {
             }
         }
 
-        // Volume slider (compact)
-        Rectangle {
+        // Volume slider (compact hides this)
+        if !root.compact : Rectangle {
             width: 80px; height: 40px;
 
             vol-ta := TouchArea {
