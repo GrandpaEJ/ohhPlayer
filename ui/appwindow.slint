@@ -28,6 +28,7 @@ export component AppWindow inherits Window {
     in-out property <float>  center-btn-opacity: 1;
     in-out property <float>  volume-level: 0.8;
     in-out property <bool>   is-fullscreen;
+    in-out property <bool>   is-pip: false;
     in-out property <float>  speed: 1.0;
     in property <string>     debug-text;
     in-out property <int>    scale-mode: 1;
@@ -49,7 +50,9 @@ export component AppWindow inherits Window {
     callback seek-dragging(float);
     callback seek-ended(float);
     callback seek-relative(float);
+    callback seek-percent(float);
     callback fullscreen-toggled();
+    callback pip-toggled();
     callback controls-moved();
     callback volume-toggled();
     callback volume-changed(float);
@@ -74,12 +77,18 @@ export component AppWindow inherits Window {
             my_kb := WindowKeyboard {
                 play-paused        => { root.play-paused(); }
                 fullscreen-toggled => { root.fullscreen-toggled(); }
+                pip-toggled        => { root.pip-toggled(); }
                 close-window       => { root.close-window(); }
                 seek-relative(d)   => { root.seek-relative(d); }
+                seek-percent(p)    => { root.seeked(p); root.controls-moved(); }
                 controls-moved     => { root.controls-moved(); }
                 help-toggled       => { root.keyboard-help-open = !root.keyboard-help-open; }
                 mute-toggled       => { root.volume-toggled(); }
                 volume-step(d)     => { root.volume-changed(max(0.0, min(1.0, root.volume-level + d))); }
+                scale-mode-next    => {
+                    root.scale-mode = root.scale-mode >= 6 ? 0 : root.scale-mode + 1;
+                    root.scale-mode-changed(root.scale-mode);
+                }
             }
 
             VideoLayer {
@@ -87,19 +96,21 @@ export component AppWindow inherits Window {
                 scale-mode: root.scale-mode;
             }
 
-            // ── Click / hover detection area ─────────────────────────────
-            // Bug fix: TouchArea.moved only fires while the pointer is pressed.
-            // Use pointer-event with PointerEventKind.move to detect FREE mouse
-            // movement (no button held) and reset the controls idle timer.
+            // ── Click / hover / scroll detection area ─────────────────────
             Rectangle {
                 x: 0; y: 0; width: 100%; height: 100%;
 
                 TouchArea {
                     pointer-event(evt) => {
-                        // Fires on move even without any mouse button held
                         if evt.kind == PointerEventKind.move { root.controls-moved(); }
                     }
                     clicked => { root.controls-moved(); }
+                    double-clicked => { root.fullscreen-toggled(); }
+                    scroll-event(evt) => {
+                        root.volume-changed(max(0.0, min(1.0, root.volume-level + (evt.delta-y > 0px ? 0.05 : -0.05))));
+                        root.controls-moved();
+                        return accept;
+                    }
                 }
 
                 // Center play/pause button
@@ -135,6 +146,7 @@ export component AppWindow inherits Window {
                         block-slider-update <=> root.block-slider-update;
                         volume-level <=>        root.volume-level;
                         is-fullscreen <=>       root.is-fullscreen;
+                        is-pip <=>              root.is-pip;
                         speed <=>               root.speed;
                         scale-mode <=>          root.scale-mode;
                         always-on-top <=>       root.my-always-on-top;
@@ -146,6 +158,7 @@ export component AppWindow inherits Window {
                         seek-ended(val)    => { root.seek-ended(val); }
                         seek-relative(d)   => { root.seek-relative(d); }
                         fullscreen-toggled => { root.fullscreen-toggled(); }
+                        pip-toggled        => { root.pip-toggled(); }
                         volume-toggled     => { root.volume-toggled(); }
                         volume-changed(v)  => { root.volume-changed(v); }
                         speed-changed(s)   => { root.speed-changed(s); }

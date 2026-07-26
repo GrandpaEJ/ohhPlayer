@@ -18,8 +18,8 @@ export component KeyboardHelpOverlay {
         }
 
         if root.is-open : Rectangle {
-            width: 400px;
-            height: 300px;
+            width: 460px;
+            height: 380px;
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
             background: rgba(30, 30, 40, 0.95);
@@ -29,10 +29,10 @@ export component KeyboardHelpOverlay {
 
             VerticalLayout {
                 padding: 24px;
-                spacing: 16px;
+                spacing: 12px;
 
                 Text {
-                    text: "Keyboard Shortcuts";
+                    text: "Keyboard & Mouse Shortcuts";
                     color: #fff;
                     font-size: 18px;
                     font-weight: 700;
@@ -42,27 +42,31 @@ export component KeyboardHelpOverlay {
                 Rectangle { height: 1px; background: rgba(255, 255, 255, 0.1); }
 
                 HorizontalLayout {
-                    spacing: 20px;
+                    spacing: 16px;
                     VerticalLayout {
-                        spacing: 12px;
-                        width: 150px;
-                        Text { text: "Space"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
-                        Text { text: "F"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
-                        Text { text: "J / ,"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
-                        Text { text: "L / ."; color: #0cf; font-weight: 600; horizontal-alignment: right; }
-                        Text { text: "Up / Down"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
+                        spacing: 8px;
+                        width: 160px;
+                        Text { text: "Space / K"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
+                        Text { text: "F / Double Click"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
+                        Text { text: "P"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
+                        Text { text: "S"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
+                        Text { text: "Left / Right"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
+                        Text { text: "Up / Down / Scroll"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
+                        Text { text: "0 - 9"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
                         Text { text: "M"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
                         Text { text: "?"; color: #0cf; font-weight: 600; horizontal-alignment: right; }
                     }
                     VerticalLayout {
-                        spacing: 12px;
+                        spacing: 8px;
                         Text { text: "Play / Pause"; color: #ccc; }
-                        Text { text: "Fullscreen"; color: #ccc; }
-                        Text { text: "Seek Backward (-10s / -5s)"; color: #ccc; }
-                        Text { text: "Seek Forward (+10s / +5s)"; color: #ccc; }
-                        Text { text: "Volume Up / Down"; color: #ccc; }
-                        Text { text: "Mute"; color: #ccc; }
-                        Text { text: "Help"; color: #ccc; }
+                        Text { text: "Fullscreen Toggle"; color: #ccc; }
+                        Text { text: "Picture-in-Picture (PiP)"; color: #ccc; }
+                        Text { text: "Cycle Video Scale Mode"; color: #ccc; }
+                        Text { text: "Seek Backward / Forward (-5s / +5s)"; color: #ccc; }
+                        Text { text: "Volume Control (±5%)"; color: #ccc; }
+                        Text { text: "Jump to 0% - 90% Position"; color: #ccc; }
+                        Text { text: "Mute / Unmute"; color: #ccc; }
+                        Text { text: "Toggle Help"; color: #ccc; }
                     }
                 }
 

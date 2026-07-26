@@ -3,25 +3,43 @@ export component WindowKeyboard inherits FocusScope {
     callback fullscreen-toggled;
     callback close-window;
     callback seek-relative(float);
+    callback seek-percent(float);
     callback controls-moved;
     callback help-toggled;
     callback mute-toggled;
     callback volume-step(float);
+    callback pip-toggled;
+    callback scale-mode-next;
 
     key-pressed(event) => {
-            if event.text == " "                           { root.play-paused();       return accept; }
-            if event.text == "f" || event.text == "F"     { root.fullscreen-toggled(); return accept; }
-            // Bug fix: ESC and Q now close the player, not pause it
-            if event.text == "Escape"
-            || event.text == "q" || event.text == "Q"     { root.close-window();       return accept; }
-            if event.text == "j"                          { root.seek-relative(-10);   return accept; }
-            if event.text == "l"                          { root.seek-relative(10);    return accept; }
-            if event.text == ","                          { root.seek-relative(-5);    return accept; }
-            if event.text == "."                          { root.seek-relative(5);     return accept; }
-            if event.text == "m" || event.text == "M"     { root.mute-toggled();       return accept; }
-            if event.text == "?" || event.text == "h" || event.text == "H" { root.help-toggled(); return accept; }
-            if event.text == "Up"                         { root.volume-step(0.05);    return accept; }
-            if event.text == "Down"                       { root.volume-step(-0.05);   return accept; }
-            return reject;
-        }
+        if event.text == " " || event.text == "k" || event.text == "K" { root.play-paused(); return accept; }
+        if event.text == "f" || event.text == "F"     { root.fullscreen-toggled(); return accept; }
+        if event.text == "p" || event.text == "P"     { root.pip-toggled(); return accept; }
+        if event.text == "s" || event.text == "S"     { root.scale-mode-next(); return accept; }
+        // Bug fix: ESC and Q now close the player, not pause it
+        if event.text == "Escape"
+        || event.text == "q" || event.text == "Q"     { root.close-window();       return accept; }
+        if event.text == "j"                          { root.seek-relative(-10);   return accept; }
+        if event.text == "l"                          { root.seek-relative(10);    return accept; }
+        if event.text == "Left" || event.text == "," { root.seek-relative(-5);    return accept; }
+        if event.text == "Right" || event.text == "." { root.seek-relative(5);     return accept; }
+        if event.text == "m" || event.text == "M"     { root.mute-toggled();       return accept; }
+        if event.text == "?" || event.text == "h" || event.text == "H" { root.help-toggled(); return accept; }
+        if event.text == "Up"                         { root.volume-step(0.05);    return accept; }
+        if event.text == "Down"                       { root.volume-step(-0.05);   return accept; }
+        
+        if event.text == "0" { root.seek-percent(0.0); return accept; }
+        if event.text == "1" { root.seek-percent(0.1); return accept; }
+        if event.text == "2" { root.seek-percent(0.2); return accept; }
+        if event.text == "3" { root.seek-percent(0.3); return accept; }
+        if event.text == "4" { root.seek-percent(0.4); return accept; }
+        if event.text == "5" { root.seek-percent(0.5); return accept; }
+        if event.text == "6" { root.seek-percent(0.6); return accept; }
+        if event.text == "7" { root.seek-percent(0.7); return accept; }
+        if event.text == "8" { root.seek-percent(0.8); return accept; }
+        if event.text == "9" { root.seek-percent(0.9); return accept; }
+        
+        return reject;
+    }
 }
+
