@@ -1,8 +1,12 @@
 # ohhPlayer
 
+[![Release](https://img.shields.io/github/v/release/GrandpaEJ/ohhPlayer?color=8a2be2&style=flat-square)](https://github.com/GrandpaEJ/ohhPlayer/releases)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
+[![Rust](https://img.shields.io/badge/built%20with-Rust-orange.svg?style=flat-square)](https://www.rust-lang.org/)
+
 An ultra-lightweight, ultra-fast video player written in **Rust**, powered by **Slint** (FemtoVG backend), **FFmpeg**, and **SDL2**.
 
-Designed strictly to be tiny, highly responsive, and use minimal system resources without sacrificing modern media player features.
+Designed strictly to be tiny, highly responsive, and use minimal system resources without sacrificing modern media player capabilities.
 
 ---
 
@@ -10,7 +14,7 @@ Designed strictly to be tiny, highly responsive, and use minimal system resource
 
 * 📺 **Universal Picture-in-Picture (PiP)**: Shrink into a floating top-pinned window with a single click or `P` key (includes native IPC auto-floating for Niri, Hyprland, Sway, and i3).
 * 🎵 **Real-time Audio Delay Adjustment**: Shift audio timing on-the-fly (`Z` / `X` for ±50ms sync shift, `C` to reset) to fix A/V desync in videos.
-* ⚡ **Progressive Long-Hold Fast Seeking**: Press or hold down seek keys or on-screen buttons to smoothly accelerate seek steps from 1s ➔ 2s ➔ 5s ➔ 10s ➔ 15s.
+* ⚡ **Progressive Long-Hold Fast Seeking**: Press or hold down seek keys (`Left`/`Right`, `,`/`.`, `J`/`L`) or on-screen buttons to smoothly accelerate seek steps from 1s ➔ 2s ➔ 5s ➔ 10s ➔ 15s.
 * 🎞️ **High Quality Decoder Engine**: Features `Bicubic` + `Accurate_RND` high-fidelity video frame scaling and 32-tap linear audio resampling.
 * 🎛️ **Comprehensive On-Screen Controls**: Dedicated `-10s`, `-5s`, `+5s`, and `+10s` skip control buttons alongside volume, speed, scale, and PiP controls.
 * 📐 **Flexible Video Scale Modes**: Cycle through **Fit (Letterbox)**, **Stretch**, **Zoom (Crop)**, **100% Native**, **1:1**, **16:9**, and **9:16** aspect ratios (`S` key).
@@ -66,7 +70,7 @@ for_window [title="Picture-in-Picture"] floating enable, sticky enable, resize s
 | `F` / Double-Click | Fullscreen Toggle |
 | `P` | Picture-in-Picture (PiP) Mode |
 | `S` | Cycle Video Scale Mode |
-| `Left` / `Right` / `,` / `.` | Seek −5s / +5s (Progressive acceleration on hold) |
+| `Left` (←) / `Right` (→) / `,` / `.` | Seek −5s / +5s (Progressive acceleration on hold) |
 | `J` / `L` | Seek −10s / +10s |
 | `0` – `9` | Jump to 0% – 90% of duration |
 | `Z` / `X` | Audio Delay −50ms / +50ms (Sync Shift) |
