@@ -90,7 +90,20 @@ for_window [title="Picture-in-Picture"] floating enable, sticky enable, resize s
 sudo apt install libavcodec-dev libavformat-dev libswscale-dev libswresample-dev libsdl2-dev
 ```
 
-### Build & Run
+### 📦 Easy 1-Click Install Script
+
+```bash
+./install.sh
+```
+
+### 🚀 Build Portable AppImage (5.7 MB)
+
+```bash
+./scripts/build_appimage.sh
+# Output binary: target/ohhPlayer-x86_64.AppImage
+```
+
+### Manual Build & Run
 
 ```bash
 # Debug build
@@ -98,10 +111,6 @@ cargo run -- path/to/video.mp4
 
 # Release build (optimized for max speed & minimal RAM)
 cargo run --release -- path/to/video.mp4
-
-# Install binary to PATH
-cargo install --path .
-ohhplayer path/to/video.mp4
 ```
 
 ---
