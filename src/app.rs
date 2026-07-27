@@ -106,7 +106,7 @@ pub fn setup_callbacks(
 
             if let Ok(st) = state_r.lock() {
                 let (base_pos, start_time) = if let Some((prev_target, prev_time, first_start)) = *pending_seek.borrow() {
-                    if now.duration_since(prev_time).as_millis() < 500 {
+                    if now.duration_since(prev_time).as_millis() < 600 {
                         (prev_target, first_start)
                     } else {
                         (st.position, now)
@@ -120,21 +120,16 @@ pub fn setup_callbacks(
                 let dir = if delta_f64 >= 0.0 { 1.0 } else { -1.0 };
                 let abs_delta = delta_f64.abs();
 
-                // Exact long press hold thresholds requested by user: 1s, 2s, 5s, 10s, 15s
-                let step = if hold_duration_secs < 0.25 {
-                    abs_delta // Single tap: default step (5s or 10s)
-                } else if hold_duration_secs < 1.0 {
-                    1.0
-                } else if hold_duration_secs < 2.0 {
-                    2.0
-                } else if hold_duration_secs < 5.0 {
-                    5.0
-                } else if hold_duration_secs < 10.0 {
-                    10.0
+                // Guaranteed full step (5s/10s) on every click. Accelerates to 10s/15s on long hold.
+                let step_val = if hold_duration_secs >= 5.0 {
+                    abs_delta.max(15.0)
+                } else if hold_duration_secs >= 2.0 {
+                    abs_delta.max(10.0)
                 } else {
-                    15.0
-                } * dir;
+                    abs_delta // Always full 5s / 10s per click!
+                };
 
+                let step = step_val * dir;
                 let target = (base_pos + step).max(0.0).min(st.duration);
                 *pending_seek.borrow_mut() = Some((target, now, start_time));
 
@@ -144,16 +139,10 @@ pub fn setup_callbacks(
                 if let Some(w) = weak.upgrade() {
                     let time_str = crate::ui_state::format_time(target, st.duration);
                     let sign     = if step >= 0.0 { "+" } else { "" };
-                    let mode_tag = if hold_duration_secs >= 10.0 {
+                    let mode_tag = if hold_duration_secs >= 5.0 {
                         " (15s Boost)"
-                    } else if hold_duration_secs >= 5.0 {
-                        " (10s Fast)"
                     } else if hold_duration_secs >= 2.0 {
-                        " (5s)"
-                    } else if hold_duration_secs >= 1.0 {
-                        " (2s)"
-                    } else if hold_duration_secs >= 0.25 {
-                        " (1s)"
+                        " (10s Fast)"
                     } else {
                         ""
                     };
