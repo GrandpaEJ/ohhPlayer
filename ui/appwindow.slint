@@ -43,7 +43,7 @@ export component AppWindow inherits Window {
     in property <[string]>   log-lines;
 
     forward-focus: my_kb;
-    always-on-top: root.my-always-on-top;
+    always-on-top: root.my-always-on-top || root.is-pip;
 
     callback play-paused();
     callback seeked(float);
