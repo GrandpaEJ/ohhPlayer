@@ -10,7 +10,7 @@ import { OsdOverlay } from "./osd.slint";
 import { LogsOverlay } from "./logs-overlay.slint";
 
 export component AppWindow inherits Window {
-    title: "ohhPlayer";
+    title: root.is-pip ? "Picture-in-Picture" : "ohhPlayer";
     preferred-width: 900px;
     preferred-height: 520px;
     min-width: 50px;

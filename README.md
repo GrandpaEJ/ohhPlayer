@@ -22,6 +22,42 @@ Designed strictly to be tiny, highly responsive, and use minimal system resource
 
 ---
 
+## 🖥️ Picture-in-Picture (PiP) Across All DEs & WMs
+
+When PiP mode is toggled (`P` key or PiP button), **ohhPlayer** automatically resizes to a compact size (`360×202`), forces `always_on_top`, and updates its window title to `"Picture-in-Picture"`.
+
+### Desktop Environment & Window Manager Compatibility
+
+* **Floating DEs (GNOME, KDE Plasma, XFCE, Cinnamon, MATE)**:
+  Works out-of-the-box! Setting `always_on_top` keeps the PiP window floating on top of all workspace windows.
+
+* **Tiling Window Managers (Niri, Hyprland, Sway, River, i3, bspwm)**:
+  To allow the PiP window to automatically float and pin when PiP mode is activated, add the rule for your window manager:
+
+#### 1. Niri (`~/.config/niri/config.kdl`)
+```kdl
+window-rule {
+    match title="Picture-in-Picture"
+    open-floating true
+    default-column-width { fixed 360; }
+    default-window-height { fixed 202; }
+}
+```
+
+#### 2. Hyprland (`~/.config/hypr/hyprland.conf`)
+```ini
+windowrulev2 = float, title:^(Picture-in-Picture)$
+windowrulev2 = pin, title:^(Picture-in-Picture)$
+windowrulev2 = size 360 202, title:^(Picture-in-Picture)$
+```
+
+#### 3. Sway / i3 (`~/.config/sway/config` or `~/.config/i3/config`)
+```ini
+for_window [title="Picture-in-Picture"] floating enable, sticky enable, resize set 360 202
+```
+
+---
+
 ## Keyboard & Mouse Shortcuts
 
 | Key / Gesture | Action |
