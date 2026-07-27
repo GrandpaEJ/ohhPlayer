@@ -6,19 +6,19 @@ Designed strictly to be tiny, highly responsive, and use minimal system resource
 
 ---
 
-## Key Features
+## 🌟 Key Features
 
-* 📺 **Picture-in-Picture (PiP) Mode**: Shrink into a floating top-pinned window with a single click or `P` key.
-* 📱 **Fully Responsive UI**: Controls auto-adapt across window dimensions from small floating PiP boxes to 4K displays.
-* 📐 **Flexible Video Scaling**: Cycle through **Fit (Letterbox)**, **Stretch**, **Zoom (Crop)**, **100% Native**, **1:1**, **16:9**, and **9:16** aspect ratios (`S` key).
-* 🖱️ **Mouse Gestures**:
+* 📺 **Universal Picture-in-Picture (PiP)**: Shrink into a floating top-pinned window with a single click or `P` key (includes native IPC auto-floating for Niri, Hyprland, Sway, and i3).
+* 🎵 **Real-time Audio Delay Adjustment**: Shift audio timing on-the-fly (`Z` / `X` for ±50ms sync shift, `C` to reset) to fix A/V desync in videos.
+* ⚡ **Progressive Long-Hold Fast Seeking**: Press or hold down seek keys or on-screen buttons to smoothly accelerate seek steps from 1s ➔ 2s ➔ 5s ➔ 10s ➔ 15s.
+* 🎞️ **High Quality Decoder Engine**: Features `Bicubic` + `Accurate_RND` high-fidelity video frame scaling and 32-tap linear audio resampling.
+* 🎛️ **Comprehensive On-Screen Controls**: Dedicated `-10s`, `-5s`, `+5s`, and `+10s` skip control buttons alongside volume, speed, scale, and PiP controls.
+* 📐 **Flexible Video Scale Modes**: Cycle through **Fit (Letterbox)**, **Stretch**, **Zoom (Crop)**, **100% Native**, **1:1**, **16:9**, and **9:16** aspect ratios (`S` key).
+* 🖱️ **Mouse Gestures & Shortcuts**:
   * Double-click video to toggle Fullscreen.
   * Mouse wheel scroll over video to adjust Volume (±5% per tick).
-* ⚡ **Ultra-Lean Resource Usage**: Single-demuxer thread model, bounded audio buffers, and hardware-accelerated FemtoVG rendering.
-* 💾 **Automatic Position Resume**: Saves playback progress per file automatically.
-* 📜 **Recent Files History**: Easily reopen past files via the integrated top menu overlay.
+* 💾 **Automatic Resume & History**: Saves playback position per file automatically and tracks recent files in the top menu overlay.
 * ⏱️ **Sleep Timer & Speed Control**: 0.25x – 2.0x playback speed adjustments and custom auto-shutdown timers.
-* ⌨️ **Rich Keyboard & Mouse Controls**: Comprehensive hotkey coverage for instant playback control.
 
 ---
 
@@ -32,7 +32,7 @@ When PiP mode is toggled (`P` key or PiP button), **ohhPlayer** automatically re
   Works out-of-the-box! Setting `always_on_top` keeps the PiP window floating on top of all workspace windows.
 
 * **Tiling Window Managers (Niri, Hyprland, Sway, River, i3, bspwm)**:
-  To allow the PiP window to automatically float and pin when PiP mode is activated, add the rule for your window manager:
+  Automatic IPC commands trigger floating state upon PiP toggle. To ensure consistent dimensions, add the rule for your window manager:
 
 #### 1. Niri (`~/.config/niri/config.kdl`)
 ```kdl
@@ -58,7 +58,7 @@ for_window [title="Picture-in-Picture"] floating enable, sticky enable, resize s
 
 ---
 
-## Keyboard & Mouse Shortcuts
+## ⌨️ Keyboard & Mouse Shortcuts
 
 | Key / Gesture | Action |
 |---|---|
@@ -66,7 +66,7 @@ for_window [title="Picture-in-Picture"] floating enable, sticky enable, resize s
 | `F` / Double-Click | Fullscreen Toggle |
 | `P` | Picture-in-Picture (PiP) Mode |
 | `S` | Cycle Video Scale Mode |
-| `Left` / `Right` / `,` / `.` | Seek −5s / +5s |
+| `Left` / `Right` / `,` / `.` | Seek −5s / +5s (Progressive acceleration on hold) |
 | `J` / `L` | Seek −10s / +10s |
 | `0` – `9` | Jump to 0% – 90% of duration |
 | `Z` / `X` | Audio Delay −50ms / +50ms (Sync Shift) |
@@ -78,7 +78,7 @@ for_window [title="Picture-in-Picture"] floating enable, sticky enable, resize s
 
 ---
 
-## Installation & Build (Linux)
+## 🛠️ Installation & Build (Linux)
 
 ### System Dependencies
 
@@ -102,6 +102,6 @@ ohhplayer path/to/video.mp4
 
 ---
 
-## License
+## 📄 License
 
 [MIT](LICENSE)
