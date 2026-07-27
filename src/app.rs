@@ -354,6 +354,9 @@ pub fn setup_callbacks(
     {
         let weak = app_weak.clone();
         let set  = settings.clone();
+        let act_pip = ui.last_activity.clone();
+        let ctrl_op_pip = ui.controls_opacity.clone();
+        let center_op_pip = ui.center_opacity.clone();
         let saved_size = Rc::new(RefCell::new((900u32, 520u32)));
         app.on_pip_toggled(move || {
             if let Some(w) = weak.upgrade() {
@@ -370,6 +373,13 @@ pub fn setup_callbacks(
                     w.set_my_always_on_top(true);
                     w.set_osd_text(slint::SharedString::from("PiP Mode Enabled"));
                     
+                    // Hide controls immediately on entering PiP mode unless mouse moves
+                    *act_pip.borrow_mut() = std::time::Instant::now() - std::time::Duration::from_secs(10);
+                    *ctrl_op_pip.borrow_mut() = 0.0;
+                    *center_op_pip.borrow_mut() = 0.0;
+                    w.set_controls_opacity(0.0);
+                    w.set_center_btn_opacity(0.0);
+
                     // Dispatch IPC command for tiling WMs (Niri, Hyprland, Sway, i3) to force floating
                     toggle_wm_floating(true);
                 } else {
@@ -568,8 +578,10 @@ pub fn setup_callbacks(
             a.set_time_text(slint::SharedString::from(ui_state::format_time(pos, dur)));
 
             let idle = ui.last_activity.borrow().elapsed().as_secs_f32();
+            let is_pip = a.get_is_pip();
             let op   = ui_state::compute_opacity(
                 playing,
+                is_pip,
                 idle,
                 *ui.controls_opacity.borrow(),
                 *ui.center_opacity.borrow(),

@@ -43,8 +43,8 @@ export component Controls {
 
     property <bool> speed-open: false;
     property <bool> sleep-timer-open: false;
-    property <bool> is-compact: root.width < 620px;
-    property <bool> is-tiny: root.width < 440px;
+    property <bool> is-compact: root.width < 640px || root.is-pip;
+    property <bool> is-tiny: root.width < 500px || root.is-pip;
 
     width: 100%;
     height: 100%;
@@ -148,13 +148,13 @@ export component Controls {
                     }
                 }
 
-                // Time display
-                Text {
+                // Time display (hidden on tiny/pip to avoid crowding)
+                if !root.is-tiny : Text {
                     text: root.time-text;
                     color: rgba(255,255,255,0.6);
-                    font-size: root.is-tiny ? 11px : 12px;
+                    font-size: 12px;
                     vertical-alignment: center;
-                    min-width: root.is-tiny ? 65px : 110px;
+                    min-width: 100px;
                     horizontal-alignment: left;
                 }
 
@@ -221,8 +221,8 @@ export component Controls {
                             controls-moved => { root.controls-moved(); }
                         }
 
-                        // Scale mode toggle button
-                        ScaleButton {
+                        // Scale mode toggle button (hidden on tiny)
+                        if !root.is-tiny : ScaleButton {
                             scale-mode <=> root.scale-mode;
                             clicked => { root.scale-mode-changed(root.scale-mode); }
                             controls-moved => { root.controls-moved(); }
