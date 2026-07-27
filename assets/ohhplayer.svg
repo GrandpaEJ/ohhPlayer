@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#16192e" />
+      <stop offset="100%" stop-color="#0a0c16" />
+    </linearGradient>
+    <linearGradient id="playGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff6584" />
+      <stop offset="100%" stop-color="#ff2a5f" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Container Squircle -->
+  <rect x="32" y="32" width="448" height="448" rx="96" ry="96" fill="url(#bgGrad)" stroke="#252b47" stroke-width="6"/>
+
+  <!-- 4 Corner Accent Dots -->
+  <circle cx="88" cy="88" r="9" fill="#ff6584" opacity="0.65"/>
+  <circle cx="424" cy="88" r="9" fill="#ff6584" opacity="0.65"/>
+  <circle cx="88" cy="424" r="9" fill="#ff6584" opacity="0.65"/>
+  <circle cx="424" cy="424" r="9" fill="#ff6584" opacity="0.65"/>
+
+  <!-- Play Symbol Triangle with Rounded Corners -->
+  <path d="M 196 148 C 182 139 164 149 164 166 L 164 346 C 164 363 182 373 196 364 L 348 274 C 362 265 362 247 348 238 Z" fill="url(#playGrad)" filter="url(#glow)"/>
+</svg>
