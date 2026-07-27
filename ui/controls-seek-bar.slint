@@ -9,6 +9,7 @@ export component SeekBar {
     height: 24px;
 
     seek-ta := TouchArea {
+        mouse-cursor: pointer;
         pointer-event(evt) => {
             root.controls-moved();
             let v = max(0, min(1, self.mouse-x / parent.width));

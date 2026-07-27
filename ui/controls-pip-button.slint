@@ -37,6 +37,7 @@ export component PipButton {
         }
 
         pip-ta := TouchArea {
+            mouse-cursor: pointer;
             pointer-event(evt) => {
                 if evt.kind == PointerEventKind.move { root.controls-moved(); }
             }

@@ -46,6 +46,7 @@ export component RecentFilesOverlay inherits Rectangle {
                 Rectangle {
                     width: 24px;
                     TouchArea {
+                        mouse-cursor: pointer;
                         clicked => { root.close-clicked(); }
                     }
                     Path {
@@ -85,6 +86,7 @@ export component RecentFilesOverlay inherits Rectangle {
                         }
 
                         ta := TouchArea {
+                            mouse-cursor: pointer;
                             clicked => {
                                 root.file-clicked(file.path);
                                 root.close-clicked();

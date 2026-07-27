@@ -42,6 +42,7 @@ export component SleepTimerPopup {
                 }
                 
                 ta := TouchArea {
+                    mouse-cursor: pointer;
                     clicked => { root.timer-selected(t.val); }
                     pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
                 }
@@ -73,6 +74,7 @@ export component SleepTimerPopup {
                     background: set-ta.has_hover ? rgba(255,255,255,0.2) : rgba(255,255,255,0.1);
                     Text { text: "Set"; color: #fff; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
                     set-ta := TouchArea {
+                        mouse-cursor: pointer;
                         clicked => { root.custom-timer-requested(custom-ti.text); }
                     }
                 }

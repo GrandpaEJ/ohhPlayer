@@ -23,6 +23,7 @@ export component ScaleButton inherits Rectangle {
         y: (parent.height - self.preferred-height) / 2;
     }
     scale-ta := TouchArea {
+        mouse-cursor: pointer;
         pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
         clicked => {
             root.scale-mode = root.scale-mode == 6 ? 0 : root.scale-mode + 1;

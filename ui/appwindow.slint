@@ -198,6 +198,7 @@ export component AppWindow inherits Window {
                         animate stroke { duration: 150ms; }
                     }
                     close-ta := TouchArea {
+                        mouse-cursor: pointer;
                         pointer-event(evt) => {
                             if evt.kind == PointerEventKind.move { root.controls-moved(); }
                         }

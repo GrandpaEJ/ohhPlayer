@@ -21,6 +21,7 @@ export component CenterPlayButton {
         }
 
         TouchArea {
+            mouse-cursor: pointer;
             moved => { root.controls-moved(); }
             clicked => { root.clicked(); }
         }

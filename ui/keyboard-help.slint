@@ -89,6 +89,7 @@ export component KeyboardHelpOverlay {
                         vertical-alignment: center;
                     }
                     close-btn := TouchArea {
+                        mouse-cursor: pointer;
                         clicked => { root.close-clicked(); }
                         pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
                     }

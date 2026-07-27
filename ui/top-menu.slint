@@ -33,6 +33,7 @@ export component TopMenu {
         }
 
         btn-ta := TouchArea {
+            mouse-cursor: pointer;
             pointer-event(evt) => {
                 if evt.kind == PointerEventKind.move { root.controls-moved(); }
             }
@@ -74,6 +75,7 @@ export component TopMenu {
                     x: 10px;
                 }
                 item1-ta := TouchArea {
+                    mouse-cursor: pointer;
                     clicked => {
                         root.menu-open = false;
                         root.open-file();
@@ -95,6 +97,7 @@ export component TopMenu {
                     x: 10px;
                 }
                 item2-ta := TouchArea {
+                    mouse-cursor: pointer;
                     clicked => {
                         root.menu-open = false;
                         root.open-recent();
@@ -116,6 +119,7 @@ export component TopMenu {
                     x: 10px;
                 }
                 itemlogs-ta := TouchArea {
+                    mouse-cursor: pointer;
                     clicked => {
                         root.menu-open = false;
                         root.show-logs();
@@ -142,6 +146,7 @@ export component TopMenu {
                     x: 10px;
                 }
                 item3-ta := TouchArea {
+                    mouse-cursor: pointer;
                     clicked => {
                         root.scale-mode = root.scale-mode == 6 ? 0 : root.scale-mode + 1;
                         root.controls-moved();

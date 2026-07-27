@@ -43,6 +43,7 @@ export component SpeedPopup {
                     y: (parent.height - self.preferred-height) / 2;
                 }
                 TouchArea {
+                    mouse-cursor: pointer;
                     pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
                     clicked => {
                         root.speed-changed(spd);

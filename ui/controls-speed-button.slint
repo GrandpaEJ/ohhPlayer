@@ -33,6 +33,7 @@ export component SpeedButton inherits Rectangle {
         y: (parent.height - self.preferred-height) / 2;
     }
     spd-ta := TouchArea {
+        mouse-cursor: pointer;
         pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
         clicked => { root.speed-open = !root.speed-open; root.clicked(); root.controls-moved(); }
     }

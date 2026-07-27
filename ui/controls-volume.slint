@@ -27,6 +27,7 @@ export component VolumeControl {
                 y: (parent.height - self.height) / 2;
             }
             vol-icon-ta := TouchArea {
+                mouse-cursor: pointer;
                 pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
                 clicked => { root.volume-toggled(); }
             }
@@ -37,6 +38,7 @@ export component VolumeControl {
             width: 80px; height: 40px;
 
             vol-ta := TouchArea {
+                mouse-cursor: pointer;
                 pointer-event(evt) => {
                     root.controls-moved();
                     if evt.kind == PointerEventKind.move && self.pressed {

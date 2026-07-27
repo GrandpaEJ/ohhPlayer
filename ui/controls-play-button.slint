@@ -18,6 +18,7 @@ export component PlayButton inherits Rectangle {
         y: (parent.height - self.height) / 2;
     }
     play-ta := TouchArea {
+        mouse-cursor: pointer;
         pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
         clicked => { root.clicked(); }
     }

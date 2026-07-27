@@ -186,6 +186,7 @@ export component Controls {
                                 y: (parent.height - self.height) / 2;
                             }
                             aot-ta := TouchArea {
+                                mouse-cursor: pointer;
                                 clicked => { root.always-on-top-toggled(); }
                                 pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
                             }
@@ -206,6 +207,7 @@ export component Controls {
                                 y: (parent.height - self.height) / 2;
                             }
                             sleep-ta := TouchArea {
+                                mouse-cursor: pointer;
                                 clicked => { root.sleep-timer-open = !root.sleep-timer-open; root.speed-open = false; }
                                 pointer-event(evt) => { if evt.kind == PointerEventKind.move { root.controls-moved(); } }
                             }
