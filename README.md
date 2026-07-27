@@ -69,6 +69,8 @@ for_window [title="Picture-in-Picture"] floating enable, sticky enable, resize s
 | `Left` / `Right` / `,` / `.` | Seek −5s / +5s |
 | `J` / `L` | Seek −10s / +10s |
 | `0` – `9` | Jump to 0% – 90% of duration |
+| `Z` / `X` | Audio Delay −50ms / +50ms (Sync Shift) |
+| `C` | Reset Audio Delay (0ms) |
 | `↑` / `↓` / Mouse Scroll | Volume Up / Down (±5%) |
 | `M` | Mute / Unmute |
 | `?` / `H` | Show Keyboard Help |

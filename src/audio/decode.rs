@@ -141,6 +141,11 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
             }
             continue;
         }
+
+        let opt_filter = CString::new("filter_size").unwrap();
+        let opt_interp = CString::new("linear_interp").unwrap();
+        av_opt_set_int(swr as *mut libc::c_void, opt_filter.as_ptr(), 32, 0);
+        av_opt_set_int(swr as *mut libc::c_void, opt_interp.as_ptr(), 1, 0);
         swr_init(swr);
 
         let mut pkt   = av_packet_alloc();

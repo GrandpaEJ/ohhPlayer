@@ -147,6 +147,9 @@ pub(crate) fn decode_video(
             st.video_height = native_h;
         }
 
+        const SWS_BICUBIC: i32 = 4;
+        const SWS_ACCURATE_RND: i32 = 0x40000;
+        let sws_flags = SWS_BICUBIC | SWS_ACCURATE_RND;
         let sws_ctx = sws_getContext(
             (*codec_ctx).width,
             (*codec_ctx).height,
@@ -154,11 +157,12 @@ pub(crate) fn decode_video(
             native_w as i32,
             native_h as i32,
             AVPixelFormat::AV_PIX_FMT_RGB24,
-            2,
+            sws_flags,
             ptr::null_mut(),
             ptr::null_mut(),
             ptr::null_mut(),
         );
+
         if sws_ctx.is_null() {
             crate::app_log!("decoder: cannot create scaler");
             avcodec_free_context(&mut codec_ctx);
@@ -254,13 +258,14 @@ pub(crate) fn decode_video(
 
                 state.lock().unwrap().position = frame_pts;
 
-                // ── A/V sync: use audio position as master clock ──────────
-                let (audio_pos, spd) = {
+                // ── A/V sync: use audio position + audio delay offset as master clock ──
+                let (audio_pos, audio_delay, spd) = {
                     let a = audio_shared.lock().unwrap();
                     let c = command.lock().unwrap();
-                    (a.audio_position_secs, c.speed as f64)
+                    (a.audio_position_secs, a.audio_delay_secs, c.speed as f64)
                 };
-                let effective_pos = if spd > 0.0 { audio_pos * spd } else { audio_pos };
+                let master_clock = audio_pos + audio_delay;
+                let effective_pos = if spd > 0.0 { master_clock * spd } else { master_clock };
 
                 if frame_pts < effective_pos - 0.3 {
                     // Video is far behind audio — skip this frame to catch up

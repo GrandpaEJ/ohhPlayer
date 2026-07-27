@@ -77,6 +77,7 @@ fn main() {
     let decoder = decoder::Decoder::new();
     let mut audio_out = audio::AudioOutput::new();
     let _ = audio_out.init_sdl();
+    audio_out.shared.lock().unwrap().audio_delay_secs = settings.borrow().audio_delay_ms as f64 / 1000.0;
 
     let start_path = path.clone().unwrap_or_else(|| "".to_string());
     if !start_path.is_empty() {

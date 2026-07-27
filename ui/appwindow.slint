@@ -65,6 +65,8 @@ export component AppWindow inherits Window {
     callback sleep-timer-changed(int);
     callback custom-timer-requested(string);
     callback scale-mode-changed(int);
+    callback audio-delay-changed(int);
+    callback audio-delay-reset();
 
     VerticalBox {
         padding: 0px;
@@ -89,6 +91,8 @@ export component AppWindow inherits Window {
                     root.scale-mode = root.scale-mode >= 6 ? 0 : root.scale-mode + 1;
                     root.scale-mode-changed(root.scale-mode);
                 }
+                audio-delay-step(ms) => { root.audio-delay-changed(ms); }
+                audio-delay-reset    => { root.audio-delay-reset(); }
             }
 
             VideoLayer {

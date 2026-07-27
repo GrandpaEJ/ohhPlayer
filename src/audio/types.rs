@@ -11,6 +11,8 @@ pub struct AudioShared {
     pub load_file: Option<String>,
     /// Audio playback position in seconds (master clock for A/V sync).
     pub audio_position_secs: f64,
+    /// Audio delay offset in seconds (+ is delay audio, - is advance audio).
+    pub audio_delay_secs: f64,
 }
 
 impl AudioShared {
@@ -23,6 +25,7 @@ impl AudioShared {
             quit:     false,
             load_file: None,
             audio_position_secs: 0.0,
+            audio_delay_secs: 0.0,
         }
     }
 }

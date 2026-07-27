@@ -363,6 +363,51 @@ pub fn setup_callbacks(
         });
     }
 
+    // ── Audio Delay Adjustment ────────────────────────────────────────────
+    {
+        let set = settings.clone();
+        let weak = app_weak.clone();
+        let audio = audio_shared.clone();
+        app.on_audio_delay_changed(move |step_ms| {
+            let mut s = set.borrow_mut();
+            s.audio_delay_ms += step_ms;
+            let current_ms = s.audio_delay_ms;
+            s.save();
+
+            audio.lock().unwrap().audio_delay_secs = current_ms as f64 / 1000.0;
+
+            if let Some(w) = weak.upgrade() {
+                let osd_str = if current_ms == 0 {
+                    "Audio Delay: 0 ms (Synced)".to_string()
+                } else if current_ms > 0 {
+                    format!("Audio Delay: +{} ms", current_ms)
+                } else {
+                    format!("Audio Delay: {} ms", current_ms)
+                };
+                w.set_osd_text(slint::SharedString::from(osd_str));
+                w.set_osd_opacity(1.0);
+            }
+        });
+    }
+
+    {
+        let set = settings.clone();
+        let weak = app_weak.clone();
+        let audio = audio_shared.clone();
+        app.on_audio_delay_reset(move || {
+            let mut s = set.borrow_mut();
+            s.audio_delay_ms = 0;
+            s.save();
+
+            audio.lock().unwrap().audio_delay_secs = 0.0;
+
+            if let Some(w) = weak.upgrade() {
+                w.set_osd_text(slint::SharedString::from("Audio Delay Reset (0 ms)"));
+                w.set_osd_opacity(1.0);
+            }
+        });
+    }
+
     // ── Sleep Timer ───────────────────────────────────────────────────────
     let sleep_target: Rc<RefCell<Option<std::time::Instant>>> = Rc::new(RefCell::new(None));
     {

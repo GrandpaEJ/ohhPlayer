@@ -8,8 +8,14 @@ pub struct AppSettings {
     pub scale_mode: i32,
     pub always_on_top: bool,
     #[serde(default)]
+    pub audio_delay_ms: i32,
+    #[serde(default = "default_video_quality")]
+    pub video_quality: i32,
+    #[serde(default)]
     pub file_positions: HashMap<String, f64>,
 }
+
+fn default_video_quality() -> i32 { 1 } // 1 = Bicubic (High Quality)
 
 impl Default for AppSettings {
     fn default() -> Self {
@@ -18,6 +24,8 @@ impl Default for AppSettings {
             speed: 1.0,
             scale_mode: 0,
             always_on_top: false,
+            audio_delay_ms: 0,
+            video_quality: 1,
             file_positions: HashMap::new(),
         }
     }
