@@ -96,7 +96,7 @@ pub fn setup_callbacks(
         let act     = ui.last_activity.clone();
         let weak    = app_weak.clone();
 
-        let pending_seek: Rc<RefCell<Option<(f64, std::time::Instant)>>> = Rc::new(RefCell::new(None));
+        let pending_seek: Rc<RefCell<Option<(f64, std::time::Instant, u32)>>> = Rc::new(RefCell::new(None));
 
         app.on_seek_relative(move |delta| {
             let now = std::time::Instant::now();
@@ -104,26 +104,39 @@ pub fn setup_callbacks(
             *act.borrow_mut() = now;
 
             if let Ok(st) = state_r.lock() {
-                let base_pos = if let Some((prev_target, prev_time)) = *pending_seek.borrow() {
-                    if now.duration_since(prev_time).as_millis() < 800 {
-                        prev_target
+                let (base_pos, count) = if let Some((prev_target, prev_time, prev_count)) = *pending_seek.borrow() {
+                    if now.duration_since(prev_time).as_millis() < 600 {
+                        (prev_target, prev_count + 1)
                     } else {
-                        st.position
+                        (st.position, 1)
                     }
                 } else {
-                    st.position
+                    (st.position, 1)
                 };
 
-                let target = (base_pos + delta as f64).max(0.0).min(st.duration);
-                *pending_seek.borrow_mut() = Some((target, now));
+                let delta_f64 = delta as f64;
+                let dir = if delta_f64 >= 0.0 { 1.0 } else { -1.0 };
+                let abs_delta = delta_f64.abs();
+                // Progressive long-hold acceleration: 1s, 2s, 5s, 10s, 15s
+                let step = match count {
+                    1 => abs_delta,
+                    2 => abs_delta.min(2.0),
+                    3..=4 => 5.0,
+                    5..=7 => 10.0,
+                    _ => 15.0,
+                } * dir;
+
+                let target = (base_pos + step).max(0.0).min(st.duration);
+                *pending_seek.borrow_mut() = Some((target, now, count));
 
                 cmd_r.lock().unwrap().seek_target  = Some(target);
                 audio_r.lock().unwrap().seek_to    = Some(target);
 
                 if let Some(w) = weak.upgrade() {
                     let time_str = crate::ui_state::format_time(target, st.duration);
-                    let sign     = if delta >= 0.0 { "+" } else { "" };
-                    w.set_osd_text(slint::SharedString::from(format!("Seek: {} ({}{}s)", time_str, sign, delta as i32)));
+                    let sign     = if step >= 0.0 { "+" } else { "" };
+                    let boost    = if count >= 8 { " (15s Boost)" } else if count >= 5 { " (10s Fast)" } else { "" };
+                    w.set_osd_text(slint::SharedString::from(format!("Seek: {} ({}{}s{})", time_str, sign, step as i32, boost)));
                     w.set_osd_opacity(1.0);
                 }
             }
