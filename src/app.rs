@@ -96,7 +96,8 @@ pub fn setup_callbacks(
         let act     = ui.last_activity.clone();
         let weak    = app_weak.clone();
 
-        let pending_seek: Rc<RefCell<Option<(f64, std::time::Instant, u32)>>> = Rc::new(RefCell::new(None));
+        // Stores: (target_position, last_event_time, hold_start_time)
+        let pending_seek: Rc<RefCell<Option<(f64, std::time::Instant, std::time::Instant)>>> = Rc::new(RefCell::new(None));
 
         app.on_seek_relative(move |delta| {
             let now = std::time::Instant::now();
@@ -104,30 +105,38 @@ pub fn setup_callbacks(
             *act.borrow_mut() = now;
 
             if let Ok(st) = state_r.lock() {
-                let (base_pos, count) = if let Some((prev_target, prev_time, prev_count)) = *pending_seek.borrow() {
-                    if now.duration_since(prev_time).as_millis() < 600 {
-                        (prev_target, prev_count + 1)
+                let (base_pos, start_time) = if let Some((prev_target, prev_time, first_start)) = *pending_seek.borrow() {
+                    if now.duration_since(prev_time).as_millis() < 500 {
+                        (prev_target, first_start)
                     } else {
-                        (st.position, 1)
+                        (st.position, now)
                     }
                 } else {
-                    (st.position, 1)
+                    (st.position, now)
                 };
 
+                let hold_duration_secs = now.duration_since(start_time).as_secs_f64();
                 let delta_f64 = delta as f64;
                 let dir = if delta_f64 >= 0.0 { 1.0 } else { -1.0 };
                 let abs_delta = delta_f64.abs();
-                // Progressive long-hold acceleration: 1s, 2s, 5s, 10s, 15s
-                let step = match count {
-                    1 => abs_delta,
-                    2 => abs_delta.min(2.0),
-                    3..=4 => 5.0,
-                    5..=7 => 10.0,
-                    _ => 15.0,
+
+                // Exact long press hold thresholds requested by user: 1s, 2s, 5s, 10s, 15s
+                let step = if hold_duration_secs < 0.25 {
+                    abs_delta // Single tap: default step (5s or 10s)
+                } else if hold_duration_secs < 1.0 {
+                    1.0
+                } else if hold_duration_secs < 2.0 {
+                    2.0
+                } else if hold_duration_secs < 5.0 {
+                    5.0
+                } else if hold_duration_secs < 10.0 {
+                    10.0
+                } else {
+                    15.0
                 } * dir;
 
                 let target = (base_pos + step).max(0.0).min(st.duration);
-                *pending_seek.borrow_mut() = Some((target, now, count));
+                *pending_seek.borrow_mut() = Some((target, now, start_time));
 
                 cmd_r.lock().unwrap().seek_target  = Some(target);
                 audio_r.lock().unwrap().seek_to    = Some(target);
@@ -135,8 +144,21 @@ pub fn setup_callbacks(
                 if let Some(w) = weak.upgrade() {
                     let time_str = crate::ui_state::format_time(target, st.duration);
                     let sign     = if step >= 0.0 { "+" } else { "" };
-                    let boost    = if count >= 8 { " (15s Boost)" } else if count >= 5 { " (10s Fast)" } else { "" };
-                    w.set_osd_text(slint::SharedString::from(format!("Seek: {} ({}{}s{})", time_str, sign, step as i32, boost)));
+                    let mode_tag = if hold_duration_secs >= 10.0 {
+                        " (15s Boost)"
+                    } else if hold_duration_secs >= 5.0 {
+                        " (10s Fast)"
+                    } else if hold_duration_secs >= 2.0 {
+                        " (5s)"
+                    } else if hold_duration_secs >= 1.0 {
+                        " (2s)"
+                    } else if hold_duration_secs >= 0.25 {
+                        " (1s)"
+                    } else {
+                        ""
+                    };
+
+                    w.set_osd_text(slint::SharedString::from(format!("Seek: {} ({}{}s{})", time_str, sign, step as i32, mode_tag)));
                     w.set_osd_opacity(1.0);
                 }
             }
