@@ -501,6 +501,14 @@ pub fn setup_callbacks(
     let mut last_save_time = std::time::Instant::now();
     let set_timer = settings.clone();
 
+    let mut last_ui_time_str = String::new();
+    let mut last_ui_playing = !state.lock().unwrap().playing;
+    let mut last_ui_pos = -10.0_f32;
+    let mut last_ui_dur = -10.0_f32;
+    let mut last_ui_vol = -10.0_f32;
+    let mut last_ctrl_op = -1.0_f32;
+    let mut last_center_op = -1.0_f32;
+
     let timer = slint::Timer::default();
     timer.start(
         slint::TimerMode::Repeated,
@@ -575,7 +583,11 @@ pub fn setup_callbacks(
                 }
             }
 
-            a.set_time_text(slint::SharedString::from(ui_state::format_time(pos, dur)));
+            let time_str = ui_state::format_time(pos, dur);
+            if time_str != last_ui_time_str {
+                last_ui_time_str = time_str.clone();
+                a.set_time_text(slint::SharedString::from(time_str));
+            }
 
             let idle = ui.last_activity.borrow().elapsed().as_secs_f32();
             let is_pip = a.get_is_pip();
@@ -601,16 +613,37 @@ pub fn setup_callbacks(
                 *ui.last_slider_set.borrow_mut() = op.slider_val as f64;
             }
 
-            a.set_controls_opacity(op.controls_target);
+            if (op.controls_target - last_ctrl_op).abs() > 0.001 {
+                last_ctrl_op = op.controls_target;
+                a.set_controls_opacity(op.controls_target);
+            }
             *ui.controls_opacity.borrow_mut() = op.controls_target;
 
-            a.set_center_btn_opacity(op.center_target);
+            if (op.center_target - last_center_op).abs() > 0.001 {
+                last_center_op = op.center_target;
+                a.set_center_btn_opacity(op.center_target);
+            }
             *ui.center_opacity.borrow_mut() = op.center_target;
 
-            a.set_playing(playing);
-            a.set_position(pos as f32);
-            a.set_duration(dur as f32);
-            a.set_volume_level(audio_shared.lock().unwrap().volume);
+            if playing != last_ui_playing {
+                last_ui_playing = playing;
+                a.set_playing(playing);
+            }
+            let pos_f32 = pos as f32;
+            if (pos_f32 - last_ui_pos).abs() > 0.01 {
+                last_ui_pos = pos_f32;
+                a.set_position(pos_f32);
+            }
+            let dur_f32 = dur as f32;
+            if (dur_f32 - last_ui_dur).abs() > 0.01 {
+                last_ui_dur = dur_f32;
+                a.set_duration(dur_f32);
+            }
+            let vol = audio_shared.lock().unwrap().volume;
+            if (vol - last_ui_vol).abs() > 0.001 {
+                last_ui_vol = vol;
+                a.set_volume_level(vol);
+            }
 
             // ── Debug Overlay Update ─────────────────────────────────────────
             let mut ds = debug_state.borrow_mut();

@@ -186,6 +186,8 @@ pub(crate) fn decode_video(
         let mut seek_ts: i64 = 0;
 
         let mut skip_to_pts:   Option<f64> = None;
+        let mut buffer_pool: [Option<slint::SharedPixelBuffer<slint::Rgb8Pixel>>; 2] = [None, None];
+        let mut pool_idx = 0;
 
         loop {
             // ── Process commands before every packet ─────────────────────
@@ -287,8 +289,16 @@ pub(crate) fn decode_video(
                     }
                 }
 
-                // ── Scale frame to RGB directly into Slint's buffer ───────
-                let mut buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::new(native_w, native_h);
+                // ── Scale frame to RGB directly into recycled Slint buffer ───────
+                let mut buffer = match &buffer_pool[pool_idx] {
+                    Some(buf) if buf.width() == native_w && buf.height() == native_h => buf.clone(),
+                    _ => {
+                        let new_buf = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::new(native_w, native_h);
+                        buffer_pool[pool_idx] = Some(new_buf.clone());
+                        new_buf
+                    }
+                };
+                pool_idx = (pool_idx + 1) % 2;
                 let slice = buffer.make_mut_slice();
                 
                 let dst_data: [*mut u8; 4] = [slice.as_mut_ptr() as *mut u8, ptr::null_mut(), ptr::null_mut(), ptr::null_mut()];

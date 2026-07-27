@@ -18,7 +18,7 @@ pub struct AudioShared {
 impl AudioShared {
     pub(crate) fn new() -> Self {
         Self {
-            buffer:   VecDeque::new(),
+            buffer:   VecDeque::with_capacity(44100 * 2 * 2),
             volume:   0.8,
             playing:  true,
             seek_to:  None,

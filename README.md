@@ -15,7 +15,9 @@ Designed strictly to be tiny, highly responsive, and use minimal system resource
 * 📺 **Universal Picture-in-Picture (PiP)**: Shrink into a floating top-pinned window with a single click or `P` key (includes native IPC auto-floating for Niri, Hyprland, Sway, and i3).
 * 🎵 **Real-time Audio Delay Adjustment**: Shift audio timing on-the-fly (`Z` / `X` for ±50ms sync shift, `C` to reset) to fix A/V desync in videos.
 * ⚡ **Progressive Long-Hold Fast Seeking**: Press or hold down seek keys (`Left`/`Right`, `,`/`.`, `J`/`L`) or on-screen buttons to smoothly accelerate seek steps from 1s ➔ 2s ➔ 5s ➔ 10s ➔ 15s.
-* 🎞️ **High Quality Decoder Engine**: Features `Bicubic` + `Accurate_RND` high-fidelity video frame scaling and 32-tap linear audio resampling.
+* 🚀 **Zero-Allocation Ring Buffer Pool**: Employs a pre-allocated ping-pong memory buffer pool and pre-allocated audio capacity for zero-gc stutter during playback.
+* 💤 **Dynamic Dirty-Frame Pacing**: Intelligent UI property caching prevents redundant property binding evaluations and string allocations, slashing idle CPU usage.
+* 🎞️ **High Quality Decoder Engine**: Features `Bicubic` + `Accurate_RND` high-fidelity video frame scaling with SIMD vectorization and 32-tap linear audio resampling.
 * 🎛️ **Comprehensive On-Screen Controls**: Dedicated `-10s`, `-5s`, `+5s`, and `+10s` skip control buttons alongside volume, speed, scale, and PiP controls.
 * 📐 **Flexible Video Scale Modes**: Cycle through **Fit (Letterbox)**, **Stretch**, **Zoom (Crop)**, **100% Native**, **1:1**, **16:9**, and **9:16** aspect ratios (`S` key).
 * 🖱️ **Mouse Gestures & Shortcuts**:
