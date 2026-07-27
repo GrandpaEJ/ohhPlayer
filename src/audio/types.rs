@@ -13,6 +13,8 @@ pub struct AudioShared {
     pub audio_position_secs: f64,
     /// Audio delay offset in seconds (+ is delay audio, - is advance audio).
     pub audio_delay_secs: f64,
+    /// True if the current file has a valid audio stream being decoded.
+    pub has_audio: bool,
 }
 
 impl AudioShared {
@@ -26,6 +28,7 @@ impl AudioShared {
             load_file: None,
             audio_position_secs: 0.0,
             audio_delay_secs: 0.0,
+            has_audio: true,
         }
     }
 }

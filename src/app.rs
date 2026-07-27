@@ -33,7 +33,10 @@ pub fn setup_callbacks(
             
             if playing && at_end {
                 cmd_p.lock().unwrap().seek_target = Some(0.0);
-                audio_p.lock().unwrap().seek_to   = Some(0.0);
+                let mut au = audio_p.lock().unwrap();
+                au.seek_to = Some(0.0);
+                au.buffer.clear();
+                au.audio_position_secs = 0.0;
             }
             
             cmd_p.lock().unwrap().playing            = playing;
@@ -81,7 +84,10 @@ pub fn setup_callbacks(
                 if st.duration > 0.0 {
                     let target = frac as f64 * st.duration;
                     cmd_s.lock().unwrap().seek_target  = Some(target);
-                    audio_s.lock().unwrap().seek_to    = Some(target);
+                    let mut au = audio_s.lock().unwrap();
+                    au.seek_to = Some(target);
+                    au.buffer.clear();
+                    au.audio_position_secs = target;
                 }
             }
         });
@@ -134,7 +140,10 @@ pub fn setup_callbacks(
                 *pending_seek.borrow_mut() = Some((target, now, start_time));
 
                 cmd_r.lock().unwrap().seek_target  = Some(target);
-                audio_r.lock().unwrap().seek_to    = Some(target);
+                let mut au = audio_r.lock().unwrap();
+                au.seek_to = Some(target);
+                au.buffer.clear();
+                au.audio_position_secs = target;
 
                 if let Some(w) = weak.upgrade() {
                     let time_str = crate::ui_state::format_time(target, st.duration);
@@ -220,6 +229,9 @@ pub fn setup_callbacks(
                 let mut au = audio_o.lock().unwrap();
                 c.load_file = Some(p.clone());
                 au.load_file = Some(p);
+                au.buffer.clear();
+                au.audio_position_secs = if resume_pos > 0.0 { resume_pos } else { 0.0 };
+                au.has_audio = true;
                 
                 if resume_pos > 0.0 {
                     c.seek_target = Some(resume_pos);
@@ -257,6 +269,9 @@ pub fn setup_callbacks(
             let mut au = audio_r.lock().unwrap();
             c.load_file = Some(p.clone());
             au.load_file = Some(p);
+            au.buffer.clear();
+            au.audio_position_secs = if resume_pos > 0.0 { resume_pos } else { 0.0 };
+            au.has_audio = true;
 
             if resume_pos > 0.0 {
                 c.seek_target = Some(resume_pos);

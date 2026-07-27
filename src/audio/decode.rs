@@ -21,6 +21,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
             av_dict_free(&mut opts);
             
             if ret < 0 {
+                shared.lock().unwrap().has_audio = false;
                 crate::app_log!("audio: cannot open '{}'", current_path);
                 loop {
                     let mut s = shared.lock().unwrap();
@@ -32,6 +33,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
                 continue;
             }
             if avformat_find_stream_info(fmt_ctx, ptr::null_mut()) < 0 {
+                shared.lock().unwrap().has_audio = false;
                 crate::app_log!("audio: cannot find stream info");
                 avformat_close_input(&mut fmt_ctx);
                 loop {
@@ -55,6 +57,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
             }
         }
         if audio_idx < 0 {
+            shared.lock().unwrap().has_audio = false;
             avformat_close_input(&mut fmt_ctx);
             loop {
                 let mut s = shared.lock().unwrap();
@@ -70,6 +73,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
         let audio_tb  = as_.time_base;
         let codec     = avcodec_find_decoder((*as_.codecpar).codec_id);
         if codec.is_null() {
+            shared.lock().unwrap().has_audio = false;
             avformat_close_input(&mut fmt_ctx);
             loop {
                 let mut s = shared.lock().unwrap();
@@ -83,6 +87,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
 
         let mut codec_ctx = avcodec_alloc_context3(codec);
         if codec_ctx.is_null() {
+            shared.lock().unwrap().has_audio = false;
             avformat_close_input(&mut fmt_ctx);
             loop {
                 let mut s = shared.lock().unwrap();
@@ -96,6 +101,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
         avcodec_parameters_to_context(codec_ctx, as_.codecpar);
         (*codec_ctx).thread_count = 1; // Limit threads to save RAM
         if avcodec_open2(codec_ctx, codec, ptr::null_mut()) < 0 {
+            shared.lock().unwrap().has_audio = false;
             avcodec_free_context(&mut codec_ctx);
             avformat_close_input(&mut fmt_ctx);
             loop {
@@ -129,6 +135,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
             ptr::null_mut(),
         );
         if ret < 0 || swr.is_null() {
+            shared.lock().unwrap().has_audio = false;
             crate::app_log!("audio: cannot create resampler");
             avcodec_free_context(&mut codec_ctx);
             avformat_close_input(&mut fmt_ctx);
@@ -147,6 +154,7 @@ pub(crate) fn decode_audio(path: &str, shared: Arc<Mutex<AudioShared>>) {
         av_opt_set_int(swr as *mut libc::c_void, opt_filter.as_ptr(), 32, 0);
         av_opt_set_int(swr as *mut libc::c_void, opt_interp.as_ptr(), 1, 0);
         swr_init(swr);
+        shared.lock().unwrap().has_audio = true;
 
         let mut pkt   = av_packet_alloc();
         let mut frame = av_frame_alloc();

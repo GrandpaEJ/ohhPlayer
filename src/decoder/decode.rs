@@ -261,15 +261,31 @@ pub(crate) fn decode_video(
                 state.lock().unwrap().position = frame_pts;
 
                 // ── A/V sync: use audio position + audio delay offset as master clock ──
-                let (audio_pos, audio_delay, spd) = {
+                let (audio_pos, audio_delay, spd, has_audio, audio_buf_empty) = {
                     let a = audio_shared.lock().unwrap();
                     let c = command.lock().unwrap();
-                    (a.audio_position_secs, a.audio_delay_secs, c.speed as f64)
+                    (a.audio_position_secs, a.audio_delay_secs, c.speed as f64, a.has_audio, a.buffer.is_empty())
                 };
+
+                // If the file has audio, but the audio buffer is currently empty (due to loading new file or seeking),
+                // wait for audio to decode its first frames so video and audio start together without desync!
+                if has_audio && audio_buf_empty {
+                    let mut waited_ms = 0;
+                    while waited_ms < 1000 {
+                        std::thread::sleep(std::time::Duration::from_millis(15));
+                        waited_ms += 15;
+                        let a = audio_shared.lock().unwrap();
+                        let c = command.lock().unwrap();
+                        if !a.has_audio || !a.buffer.is_empty() || c.quit || c.load_file.is_some() || c.seek_target.is_some() {
+                            break;
+                        }
+                    }
+                }
+
                 let master_clock = audio_pos + audio_delay;
                 let effective_pos = if spd > 0.0 { master_clock * spd } else { master_clock };
 
-                if frame_pts < effective_pos - 0.3 {
+                if !audio_buf_empty && frame_pts < effective_pos - 0.3 {
                     // Video is far behind audio — skip this frame to catch up
                     av_frame_unref(frame);
                     continue;

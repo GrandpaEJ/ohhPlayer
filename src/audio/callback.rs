@@ -21,10 +21,16 @@ impl sdl2::audio::AudioCallback for AudioCallback {
             return;
         }
         let vol = s.volume;
+        let mut samples_played = 0;
         for sample in out.iter_mut() {
-            *sample = s.buffer.pop_front().unwrap_or(0.0) * vol;
+            if let Some(val) = s.buffer.pop_front() {
+                *sample = val * vol;
+                samples_played += 1;
+            } else {
+                *sample = 0.0;
+            }
         }
         // Track audio playback position (master clock for A/V sync)
-        s.audio_position_secs += out.len() as f64 / (2.0 * 44100.0);
+        s.audio_position_secs += samples_played as f64 / (2.0 * 44100.0);
     }
 }
