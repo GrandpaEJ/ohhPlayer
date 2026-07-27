@@ -321,12 +321,19 @@ pub fn setup_callbacks(
                     w.window().set_size(slint::PhysicalSize::new(360, 202));
                     w.set_my_always_on_top(true);
                     w.set_osd_text(slint::SharedString::from("PiP Mode Enabled"));
+                    
+                    // Dispatch IPC command for tiling WMs (Niri, Hyprland, Sway, i3) to force floating
+                    toggle_wm_floating(true);
                 } else {
                     // Exit PiP mode: restore saved size & original always-on-top state
                     let (sw, sh) = *saved_size.borrow();
                     w.window().set_size(slint::PhysicalSize::new(sw, sh));
-                    w.set_my_always_on_top(set.borrow().always_on_top);
+                    let restore_aot = set.borrow().always_on_top;
+                    w.set_my_always_on_top(restore_aot);
                     w.set_osd_text(slint::SharedString::from("PiP Mode Disabled"));
+
+                    // Dispatch IPC command to return window to tiled mode if applicable
+                    toggle_wm_floating(false);
                 }
                 w.set_osd_opacity(1.0);
             }
@@ -536,4 +543,26 @@ pub fn setup_callbacks(
     );
 
     timer
+}
+
+fn toggle_wm_floating(enable: bool) {
+    if std::env::var_os("NIRI_SOCKET").is_some() {
+        let _ = std::process::Command::new("niri")
+            .args(["msg", "action", "toggle-window-floating"])
+            .spawn();
+    } else if std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some() {
+        let _ = std::process::Command::new("hyprctl")
+            .args(["dispatch", "togglefloating"])
+            .spawn();
+    } else if std::env::var_os("SWAYSOCK").is_some() {
+        let arg = if enable { "floating enable" } else { "floating disable" };
+        let _ = std::process::Command::new("swaymsg")
+            .arg(arg)
+            .spawn();
+    } else if std::env::var_os("I3SOCK").is_some() {
+        let arg = if enable { "floating enable" } else { "floating disable" };
+        let _ = std::process::Command::new("i3-msg")
+            .arg(arg)
+            .spawn();
+    }
 }
