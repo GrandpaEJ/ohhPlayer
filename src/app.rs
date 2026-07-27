@@ -94,14 +94,38 @@ pub fn setup_callbacks(
         let state_r = state.clone();
         let cd      = ui.seek_cooldown.clone();
         let act     = ui.last_activity.clone();
+        let weak    = app_weak.clone();
+
+        let pending_seek: Rc<RefCell<Option<(f64, std::time::Instant)>>> = Rc::new(RefCell::new(None));
+
         app.on_seek_relative(move |delta| {
-            *cd.borrow_mut()  = std::time::Instant::now();
-            *act.borrow_mut() = std::time::Instant::now();
+            let now = std::time::Instant::now();
+            *cd.borrow_mut()  = now;
+            *act.borrow_mut() = now;
+
             if let Ok(st) = state_r.lock() {
-                let target = (st.position + delta as f64).max(0.0).min(st.duration);
+                let base_pos = if let Some((prev_target, prev_time)) = *pending_seek.borrow() {
+                    if now.duration_since(prev_time).as_millis() < 800 {
+                        prev_target
+                    } else {
+                        st.position
+                    }
+                } else {
+                    st.position
+                };
+
+                let target = (base_pos + delta as f64).max(0.0).min(st.duration);
+                *pending_seek.borrow_mut() = Some((target, now));
+
                 cmd_r.lock().unwrap().seek_target  = Some(target);
-                // Bug #4 fix: seek audio too
                 audio_r.lock().unwrap().seek_to    = Some(target);
+
+                if let Some(w) = weak.upgrade() {
+                    let time_str = crate::ui_state::format_time(target, st.duration);
+                    let sign     = if delta >= 0.0 { "+" } else { "" };
+                    w.set_osd_text(slint::SharedString::from(format!("Seek: {} ({}{}s)", time_str, sign, delta as i32)));
+                    w.set_osd_opacity(1.0);
+                }
             }
         });
     }

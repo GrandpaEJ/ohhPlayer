@@ -24,8 +24,8 @@ export component WindowKeyboard inherits FocusScope {
         // Bug fix: ESC and Q now close the player, not pause it
         if event.text == "Escape"
         || event.text == "q" || event.text == "Q"     { root.close-window();       return accept; }
-        if event.text == "j"                          { root.seek-relative(-10);   return accept; }
-        if event.text == "l"                          { root.seek-relative(10);    return accept; }
+        if event.text == "j" || event.text == "J"     { root.seek-relative(-10);   return accept; }
+        if event.text == "l" || event.text == "L"     { root.seek-relative(10);    return accept; }
         if event.text == "Left" || event.text == "," { root.seek-relative(-5);    return accept; }
         if event.text == "Right" || event.text == "." { root.seek-relative(5);     return accept; }
         if event.text == "m" || event.text == "M"     { root.mute-toggled();       return accept; }
