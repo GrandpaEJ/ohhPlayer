@@ -94,7 +94,7 @@ export component Controls {
                     }
                 }
 
-                // Skip buttons group (hidden on compact windows)
+                // Skip buttons group (-10s, -5s, +5s, +10s) (hidden on compact windows)
                 if !root.is-compact : Rectangle {
                     border-radius: 8px;
                     background: rgba(255, 255, 255, 0.05);
@@ -102,11 +102,23 @@ export component Controls {
                     border-color: rgba(255, 255, 255, 0.08);
                     HorizontalLayout {
                         padding: 4px;
-                        spacing: 4px;
+                        spacing: 2px;
                         SkipButton {
                             is-forward: false;
                             duration-text: "10";
                             clicked => { root.seek-relative(-10); }
+                            controls-moved => { root.controls-moved(); }
+                        }
+                        SkipButton {
+                            is-forward: false;
+                            duration-text: "5";
+                            clicked => { root.seek-relative(-5); }
+                            controls-moved => { root.controls-moved(); }
+                        }
+                        SkipButton {
+                            is-forward: true;
+                            duration-text: "5";
+                            clicked => { root.seek-relative(5); }
                             controls-moved => { root.controls-moved(); }
                         }
                         SkipButton {
