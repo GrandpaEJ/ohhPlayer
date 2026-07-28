@@ -501,6 +501,29 @@ pub fn setup_callbacks(
                 w.set_osd_opacity(1.0);
             }
         });
+
+        let st2 = sleep_target.clone();
+        let weak2 = app_weak.clone();
+        app.on_custom_timer_requested(move |text| {
+            if let Ok(mins) = text.trim().parse::<i32>() {
+                if mins > 0 {
+                    *st2.borrow_mut() = Some(std::time::Instant::now() + std::time::Duration::from_secs(mins as u64 * 60));
+                    if let Some(w) = weak2.upgrade() {
+                        w.set_sleep_timer_val(mins);
+                        w.set_osd_text(slint::SharedString::from(format!("Sleep timer: {}m", mins)));
+                        w.set_osd_opacity(1.0);
+                    }
+                }
+            }
+        });
+
+        let weak3 = app_weak.clone();
+        app.on_shutdown_pc_toggled(move || {
+            if let Some(w) = weak3.upgrade() {
+                let v = !w.get_sleep_timer_shutdown_pc();
+                w.set_sleep_timer_shutdown_pc(v);
+            }
+        });
     }
 
     // ── UI refresh timer (16 ms ≈ 60 fps) ────────────────────────────────
@@ -545,6 +568,11 @@ pub fn setup_callbacks(
             if let Some(target) = *sleep_target.borrow() {
                 if std::time::Instant::now() >= target {
                     *sleep_target.borrow_mut() = None;
+                    if a.get_sleep_timer_shutdown_pc() {
+                        if std::process::Command::new("systemctl").arg("poweroff").spawn().is_err() {
+                            let _ = std::process::Command::new("poweroff").spawn();
+                        }
+                    }
                     cmd_timer.lock().unwrap().quit = true;
                     std::process::exit(0);
                 }

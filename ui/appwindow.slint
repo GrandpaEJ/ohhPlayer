@@ -36,6 +36,7 @@ export component AppWindow inherits Window {
     in-out property <bool>   recent-menu-open: false;
     in-out property <bool>   my-always-on-top: false;
     in-out property <int>    sleep-timer-val;
+    in-out property <bool>   sleep-timer-shutdown-pc;
     in-out property <bool>   keyboard-help-open: false;
     in-out property <string> osd-text: "";
     in-out property <float>  osd-opacity: 0.0;
@@ -65,6 +66,7 @@ export component AppWindow inherits Window {
     callback sleep-timer-changed(int);
     callback custom-timer-requested(string);
     callback scale-mode-changed(int);
+    callback shutdown-pc-toggled();
     callback audio-delay-changed(int);
     callback audio-delay-reset();
 
@@ -155,6 +157,7 @@ export component AppWindow inherits Window {
                         scale-mode <=>          root.scale-mode;
                         always-on-top <=>       root.my-always-on-top;
                         sleep-timer-val <=>     root.sleep-timer-val;
+                        sleep-timer-shutdown-pc <=> root.sleep-timer-shutdown-pc;
 
                         play-paused        => { root.play-paused(); }
                         seeked(val)        => { root.seeked(val); }
@@ -171,6 +174,7 @@ export component AppWindow inherits Window {
                         sleep-timer-changed(v) => { root.sleep-timer-changed(v); }
                         custom-timer-requested(val) => { root.custom-timer-requested(val); }
                         scale-mode-changed(v) => { root.scale-mode-changed(v); }
+                        shutdown-pc-toggled => { root.shutdown-pc-toggled(); }
                     }
                 }
 

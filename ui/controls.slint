@@ -24,6 +24,7 @@ export component Controls {
     in-out property <int>    scale-mode;
     in-out property <bool>   always-on-top;
     in-out property <int>    sleep-timer-val;
+    in-out property <bool>   sleep-timer-shutdown-pc;
 
     callback play-paused;
     callback seeked(float);
@@ -40,6 +41,7 @@ export component Controls {
     callback sleep-timer-changed(int);
     callback custom-timer-requested(string);
     callback scale-mode-changed(int);
+    callback shutdown-pc-toggled;
 
     property <bool> speed-open: false;
     property <bool> sleep-timer-open: false;
@@ -260,6 +262,8 @@ export component Controls {
             y: -205px;
             active-timer <=> root.sleep-timer-val;
             is-open <=> root.sleep-timer-open;
+            shutdown-pc <=> root.sleep-timer-shutdown-pc;
+            shutdown-pc-toggled => { root.shutdown-pc-toggled(); }
             timer-selected(val) => { root.sleep-timer-val = val; root.sleep-timer-changed(val); root.sleep-timer-open = false; }
             custom-timer-requested(val) => { root.custom-timer-requested(val); root.sleep-timer-open = false; }
             controls-moved => { root.controls-moved(); }

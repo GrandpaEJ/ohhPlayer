@@ -1,11 +1,13 @@
 export component SleepTimerPopup {
     in property <bool> is-open;
     in property <int> active-timer; // 0 = off, >0 = minutes
+    in property <bool> shutdown-pc;
+    callback shutdown-pc-toggled;
     callback timer-selected(int);
     callback custom-timer-requested(string);
     callback controls-moved;
 
-    width: 150px; height: 215px;
+    width: 150px; height: 245px;
 
     Rectangle {
         width: 100%; height: 100%;
@@ -77,6 +79,45 @@ export component SleepTimerPopup {
                         mouse-cursor: pointer;
                         clicked => { root.custom-timer-requested(custom-ti.text); }
                     }
+                }
+            }
+
+            Rectangle { height: 1px; background: rgba(255,255,255,0.1); }
+
+            HorizontalLayout {
+                height: 24px;
+                padding-top: 4px;
+                spacing: 6px;
+                alignment: start;
+                
+                Rectangle {
+                    width: 14px; height: 14px;
+                    border-radius: 3px;
+                    border-width: 1px;
+                    border-color: root.shutdown-pc ? #0cf : rgba(255, 255, 255, 0.4);
+                    background: root.shutdown-pc ? #0cf : transparent;
+                    y: (parent.height - self.height) / 2;
+                    
+                    if root.shutdown-pc : Path {
+                        width: 10px; height: 10px;
+                        stroke: #000;
+                        stroke-width: 1.5px;
+                        fill: transparent;
+                        commands: "M 2 5 L 4 7 L 8 2";
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                    }
+                }
+                Text {
+                    text: "Shutdown PC";
+                    color: root.shutdown-pc ? #fff : #aaa;
+                    font-size: 11px;
+                    vertical-alignment: center;
+                }
+                
+                TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { root.shutdown-pc-toggled(); }
                 }
             }
         }
